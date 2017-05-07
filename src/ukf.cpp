@@ -52,6 +52,8 @@ UKF::UKF() {
 
   Hint: one or more values initialized above might be wildly off...
   */
+
+  is_initialized_ = false;
 }
 
 UKF::~UKF() {}
@@ -60,13 +62,46 @@ UKF::~UKF() {}
  * @param {MeasurementPackage} meas_package The latest measurement data of
  * either radar or laser.
  */
-void UKF::ProcessMeasurement(const MeasurementPackage& meas_package) {
-  /**
-  TODO:
+void UKF::ProcessMeasurement(const MeasurementPackage& measurement) {
+  if (!is_initialized_) {
+    Initialize(measurement);
 
-  Complete this function! Make sure you switch between lidar and radar
-  measurements.
-  */
+    is_initialized_ = true;
+    return; // skip predict/update
+  }
+
+  //compute the time elapsed between the current and previous measurements
+  float dt = (measurement.timestamp_ - time_us_) / 1000000.0;  //dt - expressed in seconds
+  time_us_ = measurement.timestamp_;
+
+  Prediction(time_us_);
+
+  if (measurement.sensor_type_ == MeasurementPackage::SensorType::RADAR) {
+    if (use_radar_) {
+      UpdateRadar(measurement);
+    }
+  } else if (measurement.sensor_type_ == MeasurementPackage::SensorType::LASER) {
+    if (use_laser_) {
+      UpdateLidar(measurement);
+    }
+  }
+}
+
+void UKF::Initialize(const MeasurementPackage &measurement) {
+
+  if (measurement.sensor_type_ == MeasurementPackage::SensorType::LASER) {
+    x_.set_pos_x(measurement.lidar_pos_x());
+    x_.set_pos_y(measurement.lidar_pos_y());
+  }
+  else if (measurement.sensor_type_ == MeasurementPackage::SensorType::RADAR) {
+    x_.set_pos_x(measurement.radar_distance_ro() * cos(measurement.radar_angle_phi()));
+    x_.set_pos_y(measurement.radar_distance_ro() * sin(measurement.radar_angle_phi()));
+  }
+  else {
+    // TODO:
+
+  }
+  time_us_ = measurement.timestamp_;
 }
 
 /**
@@ -87,7 +122,7 @@ void UKF::Prediction(double delta_t) {
  * Updates the state and the state covariance matrix using a laser measurement.
  * @param {MeasurementPackage} meas_package
  */
-void UKF::UpdateLidar(MeasurementPackage meas_package) {
+void UKF::UpdateLidar(const MeasurementPackage& measurement) {
   /**
   TODO:
 
@@ -102,7 +137,7 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
  * Updates the state and the state covariance matrix using a radar measurement.
  * @param {MeasurementPackage} meas_package
  */
-void UKF::UpdateRadar(MeasurementPackage meas_package) {
+void UKF::UpdateRadar(const MeasurementPackage& measurement) {
   /**
   TODO:
 

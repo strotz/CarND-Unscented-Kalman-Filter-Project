@@ -7,6 +7,7 @@ class State
 {
 public:
   State() : state_(Eigen::VectorXd(5)) {
+    state_.fill(0.0);
   }
 
   Eigen::VectorXd& raw() {
@@ -21,12 +22,16 @@ public:
     return state_(0);
   }
 
-  double& pos_x() {
-    return state_(0);
+  void set_pos_x(const double& value) {
+    state_(0) = value;
   }
 
   double pos_y() const {
     return state_(1);
+  }
+
+  void set_pos_y(const double& value) {
+    state_(1) = value;
   }
 
   double velocity() const {
