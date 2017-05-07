@@ -8,6 +8,8 @@
 #include <fstream>
 #include "tools.h"
 
+#include "state.h"
+
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
@@ -24,7 +26,7 @@ public:
   bool use_radar_;
 
   ///* state vector: [pos1 pos2 vel_abs yaw_angle yaw_rate] in SI units and rad
-  VectorXd x_;
+  State x_;
 
   ///* state covariance matrix
   MatrixXd P_;
@@ -88,7 +90,7 @@ public:
    * ProcessMeasurement
    * @param meas_package The latest measurement data of either radar or laser
    */
-  void ProcessMeasurement(MeasurementPackage meas_package);
+  void ProcessMeasurement(const MeasurementPackage& meas_package);
 
   /**
    * Prediction Predicts sigma points, the state, and the state covariance
