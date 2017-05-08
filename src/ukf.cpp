@@ -11,18 +11,22 @@ using std::vector;
 /**
  * Initializes Unscented Kalman filter
  */
-UKF::UKF() {
+UKF::UKF() : n_x_(5),
+             n_aug_(7),
+    x_(n_x_),
+    P_(n_x_),
+    Xsig_pred_(n_x_, n_aug_)
+  {
+
   // if this is false, laser measurements will be ignored (except during init)
   use_laser_ = true;
 
   // if this is false, radar measurements will be ignored (except during init)
   use_radar_ = true;
 
-  // initial state vector
-  x_ = State();
+  lambda_ = 3 - n_aug_;
 
-  // initial covariance matrix
-  P_ = MatrixXd(5, 5);
+  // TODO: init state covariance matrix
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
   std_a_ = 30;
