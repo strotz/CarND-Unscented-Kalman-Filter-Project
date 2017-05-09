@@ -3,12 +3,15 @@
 
 #include "Eigen/Dense"
 
-class StateTraits {
+class State {
 public:
-  StateTraits(Eigen::VectorXd data) : state_(data) {
+  State(int dimension) : n_x_(dimension),
+    state_(Eigen::VectorXd(n_x_))
+  {
+    state_.fill(0.0);
   }
 
-  const Eigen::VectorXd& const_raw() const {
+  const Eigen::VectorXd& raw() const {
     return state_;
   }
 
@@ -48,72 +51,78 @@ public:
     return state_(4);
   }
 
-protected:
+  void LoadHead(const State& other) {
 
+    //create augmented mean state
+    state_.fill(0.0);
+    state_.head(other.n_x_) = other.raw();
+  }
+
+private:
+
+  int n_x_;
   Eigen::VectorXd state_;
 };
-
-class State : public StateTraits
-{
-public:
-  State(int state_dimension) : StateTraits(Eigen::VectorXd(state_dimension)),
-    n_x_(state_dimension)
-  {
-    state_.fill(0.0);
-  }
-
-private:
-
-  int n_x_;
-};
-
-class AugmentedState : public StateTraits
-{
-public:
-
-  AugmentedState(int state_dimension, int augmented_state_dimension) :
-          StateTraits(Eigen::VectorXd(augmented_state_dimension)),
-          n_x_(state_dimension),
-          n_aug_(augmented_state_dimension)
-  {
-  }
-
-  void Load(const State& state) {
-    state_.head(n_x_) = state.const_raw();
-  }
-
-private:
-
-  int n_x_;
-  int n_aug_;
-
-};
-
 
 class StateCovariance
 {
 public:
-  StateCovariance(int state_dimension) : data_(Eigen::MatrixXd(state_dimension, state_dimension)) {
+  StateCovariance(int dimension) : n_x_(dimension),
+                                   data_(Eigen::MatrixXd(n_x_, n_x_)) {
+    data_.fill(0.0);
   }
 
   Eigen::MatrixXd& raw() {
     return data_;
   }
 
+  Eigen::MatrixXd sqrt() const {
+    return data_.llt().matrixL();
+  }
+
+  void LoadTopLeft(const StateCovariance& other) {
+    data_.topLeftCorner(5,5) = other.data_;
+  }
+
+  double& at(int x, int y) {
+    return data_(x, y);
+  }
+
 private:
+
+  int n_x_;
   Eigen::MatrixXd data_;
 };
 
 class SigmaPoints
 {
 public:
-  SigmaPoints(int state_dimension, int augmented_state_dimension) : data_(Eigen::MatrixXd(state_dimension, 2 * augmented_state_dimension + 1)) {
+  SigmaPoints(int state_dimension, int augmented_state_dimension) : n_x_(state_dimension),
+                                                                    n_aug_(augmented_state_dimension),
+          data_(Eigen::MatrixXd(n_x_, 2 * n_aug_+ 1)) {
   }
 
-  void Load(const AugmentedState& augmentedState) {
+  void Load(const State& x, const StateCovariance& P, double lambda) {
+
+    //calculate square root of P
+    Eigen::MatrixXd A = P.sqrt();
+
+    //set first column of sigma point matrix
+    data_.col(0)  = x.raw();
+
+    //set remaining sigma points
+    double t = sqrt(lambda + n_x_);
+    for (int i = 0; i < n_aug_; i++)
+    {
+      data_.col(i + 1) = x.raw() + t * A.col(i);
+      data_.col(i + 1 + n_aug_) = x.raw() - t * A.col(i);
+    }
   }
 
 private:
+
+  int n_x_;
+  int n_aug_;
   Eigen::MatrixXd data_;
 };
 

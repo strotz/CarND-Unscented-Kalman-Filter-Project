@@ -116,10 +116,23 @@ void UKF::Initialize(const MeasurementPackage &measurement) {
 void UKF::Prediction(double delta_t) {
   /**
   TODO:
-
-  Complete this function! Estimate the object's location. Modify the state
-  vector, x_. Predict sigma points, the state, and the state covariance matrix.
+  Estimate the object's location.
+  Modify the state vector, x_.
+  Predict sigma points, the state, and the state covariance matrix.
   */
+
+  //create augmented mean vector
+  State x_aug(n_aug_);
+  x_aug.LoadHead(x_);
+
+  //create augmented covariance matrix
+  StateCovariance P_aug(n_aug_);
+  P_aug.LoadTopLeft(P_);
+  P_aug.at(5,5) = std_a_*std_a_;
+  P_aug.at(6,6) = std_yawdd_*std_yawdd_;
+
+  SigmaPoints Xsig_aug(n_aug_, n_aug_);
+  Xsig_aug.Load(x_aug, P_aug, lambda_);
 }
 
 /**
