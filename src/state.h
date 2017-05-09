@@ -11,6 +11,12 @@ public:
     state_.fill(0.0);
   }
 
+  State(const Eigen::VectorXd& other) :
+      n_x_(0),
+      state_(other)
+  {
+  }
+
   const Eigen::VectorXd& raw() const {
     return state_;
   }
@@ -43,12 +49,32 @@ public:
     return state_(2);
   }
 
+  void set_velocity(const double& value) {
+    state_(2) = value;
+  }
+
   double yaw_angle() const {
     return state_(3);
   }
 
+  void set_yaw_angle(const double& value) {
+    state_(3) = value;
+  }
+
   double yaw_rate() const {
     return state_(4);
+  }
+
+  void set_yaw_rate(const double& value) {
+    state_(4) = value;
+  }
+
+  double nu_a() const {
+    return state_(5);
+  }
+
+  double nu_yawdd() const {
+    return state_(6);
   }
 
   void LoadHead(const State& other) {
@@ -97,9 +123,10 @@ private:
 class SigmaPoints
 {
 public:
-  SigmaPoints(int state_dimension, int augmented_state_dimension) : n_x_(state_dimension),
-                                                                    n_aug_(augmented_state_dimension),
-          data_(Eigen::MatrixXd(n_x_, 2 * n_aug_+ 1)) {
+  SigmaPoints(int state_dimension, int augmented_state_dimension) :
+      n_x_(state_dimension),
+      n_aug_(augmented_state_dimension),
+      data_(Eigen::MatrixXd(n_x_, 2 * n_aug_+ 1)) {
   }
 
   void Load(const State& x, const StateCovariance& P, double lambda) {
@@ -117,6 +144,14 @@ public:
       data_.col(i + 1) = x.raw() + t * A.col(i);
       data_.col(i + 1 + n_aug_) = x.raw() - t * A.col(i);
     }
+  }
+
+  State point(int i) {
+    return State(data_.col(i));
+  }
+
+  int points() const {
+    return n_aug_ * 2 + 1;
   }
 
 private:
