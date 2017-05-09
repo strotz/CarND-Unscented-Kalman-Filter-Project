@@ -8,7 +8,7 @@
 #include <fstream>
 #include "tools.h"
 
-#include "state.h"
+#include "ukf_parts.h"
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -31,8 +31,8 @@ public:
   ///* state covariance matrix
   StateCovariance P_;
 
-  ///* predicted sigma points matrix
-  SigmaPoints Xsig_pred_;
+
+  Transform Transformation_;
 
   ///* time when the state is true, in us
   long long time_us_;
@@ -57,9 +57,6 @@ public:
 
   ///* Radar measurement noise standard deviation radius change in m/s
   double std_radrd_ ;
-
-  ///* Weights of sigma points
-  VectorXd weights_;
 
   ///* State dimension
   int n_x_;

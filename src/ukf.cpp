@@ -15,7 +15,8 @@ UKF::UKF() : n_x_(5),
              n_aug_(7),
              x_(n_x_),
              P_(n_x_),
-             Xsig_pred_(n_x_, n_aug_) {
+             Transformation_(n_x_, n_aug_)
+  {
 
   // if this is false, laser measurements will be ignored (except during init)
   use_laser_ = true;
@@ -25,12 +26,9 @@ UKF::UKF() : n_x_(5),
 
   lambda_ = 3 - n_aug_;
 
-  // TODO: init state covariance matrix
+  Transformation_.InitWeights(lambda_);
 
-  // set weights
-  weights_ = Eigen::VectorXd(Xsig_pred_.points());
-  weights_.fill(0.5 / (n_aug_ + lambda_));
-  weights_(0) = lambda_ / (lambda_ + n_aug_);
+  // TODO: init state covariance matrix
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
   std_a_ = 30;
@@ -137,72 +135,21 @@ void UKF::Prediction(double delta_t) {
   Xsig_aug.Load(x_aug, P_aug, lambda_);
 
   //predict sigma points
+  Process process;
+
   for (int i = 0; i < Xsig_aug.points(); i++) {
-    State point = Xsig_aug.point(i);
-
-    //extract values for better readability
-    double p_x = point.pos_x();
-    double p_y = point.pos_y();
-    double v = point.velocity();
-    double yaw = point.yaw_angle();
-    double yawd = point.yaw_rate();
-    double nu_a = point.nu_a();
-    double nu_yawdd = point.nu_yawdd();
-
-    //predicted state values
-    double px_p, py_p;
-
-    //avoid division by zero
-    if (fabs(yawd) > 0.001) {
-      px_p = p_x + v / yawd * (sin(yaw + yawd * delta_t) - sin(yaw));
-      py_p = p_y + v / yawd * (cos(yaw) - cos(yaw + yawd * delta_t));
-    } else {
-      px_p = p_x + v * delta_t * cos(yaw);
-      py_p = p_y + v * delta_t * sin(yaw);
-    }
-
-    double v_p = v;
-    double yaw_p = yaw + yawd * delta_t;
-    double yawd_p = yawd;
-
-    //add noise
-    px_p = px_p + 0.5 * nu_a * delta_t * delta_t * cos(yaw);
-    py_p = py_p + 0.5 * nu_a * delta_t * delta_t * sin(yaw);
-    v_p = v_p + nu_a * delta_t;
-
-    yaw_p = yaw_p + 0.5 * nu_yawdd * delta_t * delta_t;
-    yawd_p = yawd_p + nu_yawdd * delta_t;
-
-    //write predicted sigma point into right column
-    State predict = Xsig_pred_.point(i);
-    predict.set_pos_x(px_p);
-    predict.set_pos_y(py_p);
-    predict.set_velocity(v_p);
-    predict.set_yaw_angle(yaw_p); // TODO: normalize
-    predict.set_yaw_rate(yawd_p);
+    StateData point = Xsig_aug.point(i);
+    StateData predicted = process.Predict(point, delta_t);
+    Transformation_.set_point(i, predicted);
   }
 
   //predicted state mean
-  Eigen::VectorXd x = Eigen::VectorXd(n_x_);
-  x.fill(0.0);
-  for (int i = 0; i < Xsig_pred_.points(); i++) {  //iterate over sigma points
-    x = x + weights_(i) * Xsig_pred_.col(i);
-  }
-  x_.raw() = x;
+  StateData x = Transformation_.CalculateWeightedMean();
+  x_.set_data(x);
 
   //predicted state covariance matrix
-  Eigen::MatrixXd P = Eigen::MatrixXd(n_x_, n_x_);
-  P.fill(0.0);
-  for (int i = 0; i < Xsig_pred_.points(); i++) {  //iterate over sigma points
-
-    // state difference
-    VectorXd x_diff = Xsig_pred.col(i) - x;
-    //angle normalization
-    while (x_diff(3) > M_PI) x_diff(3) -= 2. * M_PI;
-    while (x_diff(3) < -M_PI) x_diff(3) += 2. * M_PI;
-
-    P = P + weights(i) * x_diff * x_diff.transpose();
-  }
+  StateCovariance P = Transformation_.CalculateCovariance(x_);
+  P_.set_data(P);
 }
 
 /**
