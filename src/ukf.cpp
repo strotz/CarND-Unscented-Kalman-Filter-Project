@@ -13,9 +13,9 @@ using std::vector;
  */
 UKF::UKF() : n_x_(5),
              n_aug_(7),
-             x_(n_x_),
-             P_(n_x_),
-             Transformation_(n_x_, n_aug_)
+             x_(), // n_x_
+             P_(),
+             Transformation_()
   {
 
   // if this is false, laser measurements will be ignored (except during init)
@@ -114,42 +114,23 @@ void UKF::Initialize(const MeasurementPackage &measurement) {
  * measurement and this one.
  */
 void UKF::Prediction(double delta_t) {
-  /**
-  TODO:
-  Estimate the object's location.
-  Modify the state vector, x_.
-  Predict sigma points, the state, and the state covariance matrix.
-  */
 
   //create augmented mean vector
-  State x_aug(n_aug_);
-  x_aug.LoadHead(x_);
+  AugmentedState x_aug = AugmentedState::Extend(x_);
 
   //create augmented covariance matrix
-  StateCovariance P_aug(n_aug_);
-  P_aug.LoadTopLeft(P_);
-  P_aug.at(5, 5) = std_a_ * std_a_;
-  P_aug.at(6, 6) = std_yawdd_ * std_yawdd_;
+  AugmentedStateCovariance P_aug = AugmentedStateCovariance::Extend(P_, std_a_, std_yawdd_);
 
-  SigmaPoints Xsig_aug(n_aug_, n_aug_);
-  Xsig_aug.Load(x_aug, P_aug, lambda_);
+  AugmentedSpaceSigmaPoints Xsig_aug = AugmentedSpaceSigmaPoints::CreateSigmaPoints(x_aug, P_aug, lambda_);
 
   //predict sigma points
-  Process process;
-
-  for (int i = 0; i < Xsig_aug.points(); i++) {
-    StateData point = Xsig_aug.point(i);
-    StateData predicted = process.Predict(point, delta_t);
-    Transformation_.set_point(i, predicted);
-  }
+  Transformation_.LoadPoints(Xsig_aug, delta_t);
 
   //predicted state mean
-  StateData x = Transformation_.CalculateWeightedMean();
-  x_.set_data(x);
+  x_ = Transformation_.CalculateWeightedMean();
 
   //predicted state covariance matrix
-  StateCovariance P = Transformation_.CalculateCovariance(x_);
-  P_.set_data(P);
+  P_ = Transformation_.CalculateCovariance(x_);
 }
 
 /**
@@ -180,4 +161,37 @@ void UKF::UpdateRadar(const MeasurementPackage &measurement) {
 
   You'll also need to calculate the radar NIS.
   */
+
+  //create matrix for sigma points in measurement space
+  RadarSpace Zsig = RadarSpace::LoadPoints(Transformation_);
+
+//  //mean predicted measurement
+//  VectorXd z_pred = VectorXd(n_z);
+//  z_pred.fill(0.0);
+//  for (int i=0; i < 2*n_aug+1; i++) {
+//    z_pred = z_pred + weights(i) * Zsig.col(i);
+//  }
+//
+//  //measurement covariance matrix S
+//  MatrixXd S = MatrixXd(n_z,n_z);
+//  S.fill(0.0);
+//  for (int i = 0; i < 2 * n_aug + 1; i++) {  //2n+1 simga points
+//    //residual
+//    VectorXd z_diff = Zsig.col(i) - z_pred;
+//
+//    //angle normalization
+//    while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
+//    while (z_diff(1)<-M_PI) z_diff(1)+=2.*M_PI;
+//
+//    S = S + weights(i) * z_diff * z_diff.transpose();
+//  }
+//
+//  //add measurement noise covariance matrix
+//  MatrixXd R = MatrixXd(n_z,n_z);
+//  R <<    std_radr*std_radr, 0, 0,
+//    0, std_radphi*std_radphi, 0,
+//    0, 0,std_radrd*std_radrd;
+//  S = S + R;
+
+
 }
