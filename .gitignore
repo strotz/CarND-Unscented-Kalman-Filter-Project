@@ -6,3 +6,7 @@ build/
 cmake-build-*
 workspace.xml
 output.txt
+
+.vs/
+Debug/
+*.vcxproj.user
