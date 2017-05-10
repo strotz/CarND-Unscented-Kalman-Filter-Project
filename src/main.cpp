@@ -195,8 +195,8 @@ int main(int argc, char* argv[]) {
       out_file_ << ukf.NIS_radar_ << "\t";
 
       // output radar measurement in cartesian coordinates
-      float ro = measurement.radar_distance_ro();
-      float phi = measurement.radar_angle_phi();
+      double ro = measurement.radar_distance_ro();
+      double phi = measurement.radar_angle_phi();
       out_file_ << ro * cos(phi) << "\t"; // px measurement
       out_file_ << ro * sin(phi) << "\t"; // py measurement
     }
@@ -210,10 +210,10 @@ int main(int argc, char* argv[]) {
     // convert ukf x vector to cartesian to compare to ground truth
     VectorXd ukf_x_cartesian_ = VectorXd(4);
 
-    float x_estimate_ = ukf.x_.pos_x();
-    float y_estimate_ = ukf.x_.pos_y();
-    float vx_estimate_ = ukf.x_.velocity() * cos(ukf.x_.yaw_angle());
-    float vy_estimate_ = ukf.x_.velocity() * sin(ukf.x_.yaw_angle());
+    double x_estimate_ = ukf.x_.pos_x();
+    double y_estimate_ = ukf.x_.pos_y();
+    double vx_estimate_ = ukf.x_.velocity() * cos(ukf.x_.yaw_angle());
+    double vy_estimate_ = ukf.x_.velocity() * sin(ukf.x_.yaw_angle());
     
     ukf_x_cartesian_ << x_estimate_, y_estimate_, vx_estimate_, vy_estimate_;
     

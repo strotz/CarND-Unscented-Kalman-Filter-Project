@@ -31,8 +31,7 @@ public:
   ///* state covariance matrix
   StateCovariance P_;
 
-
-  Transform Transformation_;
+  StateSigmaPoints Xsig_;
 
   ///* time when the state is true, in us
   long long time_us_;

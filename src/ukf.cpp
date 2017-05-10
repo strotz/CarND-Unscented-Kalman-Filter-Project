@@ -2,6 +2,7 @@
 #include "tools.h"
 #include "Eigen/Dense"
 #include <iostream>
+#include "ukf_radar.h"
 
 using namespace std;
 using Eigen::MatrixXd;
@@ -11,12 +12,14 @@ using std::vector;
 /**
  * Initializes Unscented Kalman filter
  */
-UKF::UKF() : n_x_(5),
-             n_aug_(7),
-             x_(), // n_x_
-             P_(),
-             Transformation_()
-  {
+UKF::UKF() :
+  n_x_(5),
+  n_aug_(7),
+  lambda_(3 - n_aug_),
+  x_(), // n_x_
+  P_(),
+  Xsig_()
+{
 
   // if this is false, laser measurements will be ignored (except during init)
   use_laser_ = true;
@@ -24,11 +27,6 @@ UKF::UKF() : n_x_(5),
   // if this is false, radar measurements will be ignored (except during init)
   use_radar_ = true;
 
-  lambda_ = 3 - n_aug_;
-
-  Transformation_.InitWeights(lambda_);
-
-  // TODO: init state covariance matrix
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
   std_a_ = 30;
@@ -59,6 +57,8 @@ UKF::UKF() : n_x_(5),
   Hint: one or more values initialized above might be wildly off...
   */
 
+  // TODO: init state covariance matrix
+
   is_initialized_ = false;
 }
 
@@ -77,16 +77,17 @@ void UKF::ProcessMeasurement(const MeasurementPackage &measurement) {
   }
 
   //compute the time elapsed between the current and previous measurements
-  float dt = (measurement.timestamp_ - time_us_) / 1000000.0;  //dt - expressed in seconds
+  double dt = (measurement.timestamp_ - time_us_) / 1000000.0;  //dt - expressed in seconds
   time_us_ = measurement.timestamp_;
 
-  Prediction(time_us_);
+  Prediction(dt);
 
   if (measurement.sensor_type_ == MeasurementPackage::SensorType::RADAR) {
     if (use_radar_) {
       UpdateRadar(measurement);
     }
-  } else if (measurement.sensor_type_ == MeasurementPackage::SensorType::LASER) {
+  }
+  else if (measurement.sensor_type_ == MeasurementPackage::SensorType::LASER) {
     if (use_laser_) {
       UpdateLidar(measurement);
     }
@@ -98,10 +99,12 @@ void UKF::Initialize(const MeasurementPackage &measurement) {
   if (measurement.sensor_type_ == MeasurementPackage::SensorType::LASER) {
     x_.set_pos_x(measurement.lidar_pos_x());
     x_.set_pos_y(measurement.lidar_pos_y());
-  } else if (measurement.sensor_type_ == MeasurementPackage::SensorType::RADAR) {
+  }
+  else if (measurement.sensor_type_ == MeasurementPackage::SensorType::RADAR) {
     x_.set_pos_x(measurement.radar_distance_ro() * cos(measurement.radar_angle_phi()));
     x_.set_pos_y(measurement.radar_distance_ro() * sin(measurement.radar_angle_phi()));
-  } else {
+  }
+  else {
     // TODO:
 
   }
@@ -116,21 +119,23 @@ void UKF::Initialize(const MeasurementPackage &measurement) {
 void UKF::Prediction(double delta_t) {
 
   //create augmented mean vector
-  AugmentedState x_aug = AugmentedState::Extend(x_);
+  AugmentedState x_aug = AugmentedState(x_);
 
   //create augmented covariance matrix
-  AugmentedStateCovariance P_aug = AugmentedStateCovariance::Extend(P_, std_a_, std_yawdd_);
+  AugmentedStateCovariance P_aug = AugmentedStateCovariance(P_, std_a_, std_yawdd_);
 
-  AugmentedSpaceSigmaPoints Xsig_aug = AugmentedSpaceSigmaPoints::CreateSigmaPoints(x_aug, P_aug, lambda_);
+  AugmentedSpaceSigmaPoints Xsig_aug = AugmentedSpaceSigmaPoints(x_aug, P_aug, lambda_);
 
   //predict sigma points
-  Transformation_.LoadPoints(Xsig_aug, delta_t);
+  Predictor predictor = Predictor(lambda_);
+
+  Xsig_ = predictor.LoadPoints(Xsig_aug, delta_t);
 
   //predicted state mean
-  x_ = Transformation_.CalculateWeightedMean();
+  x_ = predictor.CalculateWeightedMean(Xsig_);
 
   //predicted state covariance matrix
-  P_ = Transformation_.CalculateCovariance(x_);
+  P_ = predictor.CalculateCovariance(Xsig_, x_);
 }
 
 /**
@@ -162,36 +167,23 @@ void UKF::UpdateRadar(const MeasurementPackage &measurement) {
   You'll also need to calculate the radar NIS.
   */
 
-  //create matrix for sigma points in measurement space
-  RadarSpace Zsig = RadarSpace::LoadPoints(Transformation_);
+  RadarSpace radar(lambda_);
 
-//  //mean predicted measurement
-//  VectorXd z_pred = VectorXd(n_z);
-//  z_pred.fill(0.0);
-//  for (int i=0; i < 2*n_aug+1; i++) {
-//    z_pred = z_pred + weights(i) * Zsig.col(i);
-//  }
-//
-//  //measurement covariance matrix S
-//  MatrixXd S = MatrixXd(n_z,n_z);
-//  S.fill(0.0);
-//  for (int i = 0; i < 2 * n_aug + 1; i++) {  //2n+1 simga points
-//    //residual
-//    VectorXd z_diff = Zsig.col(i) - z_pred;
-//
-//    //angle normalization
-//    while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
-//    while (z_diff(1)<-M_PI) z_diff(1)+=2.*M_PI;
-//
-//    S = S + weights(i) * z_diff * z_diff.transpose();
-//  }
-//
-//  //add measurement noise covariance matrix
-//  MatrixXd R = MatrixXd(n_z,n_z);
-//  R <<    std_radr*std_radr, 0, 0,
-//    0, std_radphi*std_radphi, 0,
-//    0, 0,std_radrd*std_radrd;
-//  S = S + R;
+  //create matrix for sigma points in measurement space
+  RadarSigmaPoints Zsig = radar.LoadPoints(Xsig_);
+
+  //mean predicted measurement
+  RadarState z_pred = radar.CalculateWeightedMean(Zsig);
+
+  //measurement covariance matrix S
+  RadarCovariance S = radar.CalculateCovariance(Zsig, z_pred);
+
+    //  //add measurement noise covariance matrix
+    //  MatrixXd R = MatrixXd(n_z,n_z);
+    //  R <<    std_radr*std_radr, 0, 0,
+    //    0, std_radphi*std_radphi, 0,
+    //    0, 0,std_radrd*std_radrd;
+    //  S = S + R;
 
 
 }
