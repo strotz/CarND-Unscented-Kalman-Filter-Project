@@ -1,33 +1,49 @@
 #ifndef UNSCENTEDKF_PARTS_H
 #define UNSCENTEDKF_PARTS_H
 
-#include "Eigen/Dense"
-
 #include "ukf_state.h"
 #include "ukf_augmented.h"
+
+class Weights : public Eigen::VectorXd
+{
+  int number_of_points_;
+
+public:
+
+  Weights(double lambda, int space_dimension) :
+    number_of_points_(SpaceBase::dimension_to_points(space_dimension)),
+    Eigen::VectorXd(SpaceBase::dimension_to_points(space_dimension))
+  {
+    double d = lambda + space_dimension; 
+    fill(0.5 / d);
+    (*this)(0) = lambda / d;
+  }
+
+  int number_of_points() const
+  {
+    return number_of_points_;
+  }
+};
+
 
 template<class TargetSigmaPoints, class TargetState, class TargetStateCovariance>
 class SpaceTransformation
 {
 protected:
 
-  int number_of_points_;
-  Eigen::VectorXd weights_;
+  Weights weights_;
 
-  SpaceTransformation(double lambda, int space_dimension) :
-    number_of_points_(SpaceBase::dimension_to_points(space_dimension)),
-    weights_(number_of_points_)
+  SpaceTransformation(const Weights& weights) :
+    weights_(weights)
   {
-    double d = lambda + space_dimension; // TODO: double check n_aug or n_x ?
-    weights_.fill(0.5 / d);
-    weights_(0) = lambda / d;
   }
 
 public:
 
   TargetState CalculateWeightedMean(const TargetSigmaPoints& sigma_points) {
     TargetState result;
-    for (int i = 0; i < number_of_points_; i++) {  //iterate over sigma points
+    int len = weights_.number_of_points();
+    for (int i = 0; i < len; i++) { //iterate over sigma points
       result = result + weights_(i) * sigma_points.col(i);
     }
     return result;
@@ -38,8 +54,9 @@ public:
     const TargetState& mean) 
   {
     TargetStateCovariance result;
-    for (int i = 0; i < number_of_points_; i++) {  // iterate over sigma points
-                                                   // state difference
+    int len = weights_.number_of_points();
+    for (int i = 0; i < len; i++) {  // iterate over sigma points
+      // state difference
       Eigen::VectorXd x_diff = sigma_points.diff_from_mean(i, mean);
       result = result + weights_(i) * x_diff * x_diff.transpose();
     }
@@ -48,12 +65,12 @@ public:
 };
 
 
-class Predictor : public SpaceTransformation<StateSigmaPoints, State, StateCovariance> {
+class PositionPredictor : public SpaceTransformation<StateSigmaPoints, State, StateCovariance> {
 
 public:
 
-  Predictor(double lambda) :
-    SpaceTransformation(lambda, 7) // TODO: 7
+  PositionPredictor(const Weights& weights) :
+    SpaceTransformation(weights)
   {
   }
 
@@ -98,12 +115,12 @@ private:
     //write predicted sigma point into right column
     State state;
 
-    StateOps ops = StateOps(state); // TODO: wrap it
-    ops.set_pos_x(px_p);
-    ops.set_pos_y(py_p);
-    ops.set_velocity(v_p);
-    ops.set_yaw_angle(yaw_p); // TODO: normalize
-    ops.set_yaw_rate(yawd_p);
+    StateOps(state)
+      .set_pos_x(px_p)
+      .set_pos_y(py_p)
+      .set_velocity(v_p)
+      .set_yaw_angle(yaw_p) // TODO: normalize ?
+      .set_yaw_rate(yawd_p);
 
     return state;
   }
@@ -111,8 +128,9 @@ private:
 public:
 
   StateSigmaPoints LoadPoints(const AugmentedSpaceSigmaPoints& Xsig_aug, double delta_t) {
-    StateSigmaPoints result;
-    for (int i = 0; i < Xsig_aug.number_of_points(); i++) {
+    int number_of_points = Xsig_aug.number_of_points();
+    StateSigmaPoints result(number_of_points);
+    for (int i = 0; i < number_of_points; i++) {
       result.col(i) = PredictNextState(Xsig_aug.point(i), delta_t);
     }
     return result;

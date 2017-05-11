@@ -1,6 +1,6 @@
 #include "ukf.h"
 #include "tools.h"
-#include "Eigen/Dense"
+
 #include <iostream>
 #include "ukf_radar.h"
 
@@ -13,25 +13,26 @@ using std::vector;
  * Initializes Unscented Kalman filter
  */
 UKF::UKF() :
-  n_x_(5),
-  n_aug_(7),
-  lambda_(3 - n_aug_),
-  x_(), // n_x_
+  lambda_(3 - AugmentedSpaceDim),
+  x_(),
   P_(),
-  Xsig_pred_() {
+  Xsig_pred_(SpaceBase::dimension_to_points(AugmentedSpaceDim)),
+  weights_(lambda_, AugmentedSpaceDim),
+  position_predictor_(weights_)
+{
 
   // if this is false, laser measurements will be ignored (except during init)
-  use_laser_ = true;
+  use_laser_ = false;
 
   // if this is false, radar measurements will be ignored (except during init)
   use_radar_ = true;
 
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 30;
+  std_a_ = 5; // TODO: tuning parameter
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 30;
+  std_yawdd_ = 1; // TODO: tuning parameter
 
   // Laser measurement noise standard deviation position1 in m
   std_laspx_ = 0.15;
@@ -48,9 +49,12 @@ UKF::UKF() :
   // Radar measurement noise standard deviation radius change in m/s
   std_radrd_ = 0.3;
 
-  // TODO: Hint: one or more values initialized above might be wildly off...
-
-  // TODO: init state covariance matrix P_
+  // init state covariance matrix P_
+  P_ << 1, 0, 0, 0, 0,
+    0, 1, 0, 0, 0,
+    0, 0, 1000, 0, 0,
+    0, 0, 0, 1000, 0,
+    0, 0, 0, 0, 1000;
 
   is_initialized_ = false;
 }
@@ -96,8 +100,7 @@ void UKF::Initialize(const MeasurementPackage &measurement) {
     ops.set_pos_x(measurement.radar_distance_ro() * cos(measurement.radar_angle_phi()));
     ops.set_pos_y(measurement.radar_distance_ro() * sin(measurement.radar_angle_phi()));
   } else {
-    // TODO:
-
+    cout << "Error: unsupported sensor type" << endl;
   }
   time_us_ = measurement.timestamp_;
 }
@@ -118,15 +121,13 @@ void UKF::Prediction(double delta_t) {
   AugmentedSpaceSigmaPoints Xsig_aug = AugmentedSpaceSigmaPoints(x_aug, P_aug, lambda_);
 
   //predict sigma points
-  Predictor predictor = Predictor(lambda_);
-
-  Xsig_pred_ = predictor.LoadPoints(Xsig_aug, delta_t);
+  Xsig_pred_ = position_predictor_.LoadPoints(Xsig_aug, delta_t);
 
   //predicted state mean
-  x_ = predictor.CalculateWeightedMean(Xsig_pred_);
+  x_ = position_predictor_.CalculateWeightedMean(Xsig_pred_);
 
   //predicted state covariance matrix
-  P_ = predictor.CalculateCovariance(Xsig_pred_, x_);
+  P_ = position_predictor_.CalculateCovariance(Xsig_pred_, x_);
 }
 
 /**
@@ -135,7 +136,7 @@ void UKF::Prediction(double delta_t) {
  */
 void UKF::UpdateLidar(const MeasurementPackage &measurement) {
   /**
-  TODO:
+  TODO: implement lidar
 
   Complete this function! Use lidar data to update the belief about the object's
   position. Modify the state vector, x_, and covariance, P_.
@@ -149,16 +150,7 @@ void UKF::UpdateLidar(const MeasurementPackage &measurement) {
  * @param {MeasurementPackage} meas_package
  */
 void UKF::UpdateRadar(const MeasurementPackage &measurement) {
-  /**
-  TODO:
-
-  Complete this function! Use radar data to update the belief about the object's
-  position. Modify the state vector, x_, and covariance, P_.
-
-  You'll also need to calculate the radar NIS.
-  */
-
-  RadarSpace radar(lambda_);
+  RadarSpace radar(weights_);
 
   //create matrix for sigma points in measurement space
   RadarSigmaPoints Zsig = radar.LoadPoints(Xsig_pred_);
@@ -170,49 +162,51 @@ void UKF::UpdateRadar(const MeasurementPackage &measurement) {
   RadarCovariance S = radar.CalculateCovariance(Zsig, z_pred);
 
   //add measurement noise covariance matrix
-  Eigen::MatrixXd R = Eigen::MatrixXd(3, 3); // TODO: 3
+  MatrixXd R = MatrixXd(RadarSpaceDim, RadarSpaceDim);
   R << std_radr_ * std_radr_, 0, 0,
     0, std_radphi_ * std_radphi_, 0,
     0, 0, std_radrd_ * std_radrd_;
 
   S = S + R;
 
-//  //create example vector for incoming radar measurement
-//  VectorXd z = VectorXd(n_z);
-//  z <<
-//    5.9214,
-//    0.2187,
-//    2.0062;
-//
+  //create example vector for incoming radar measurement
+  VectorXd z = VectorXd(RadarSpaceDim);
+  z << 
+    measurement.radar_distance_ro(), 
+    measurement.radar_angle_phi(), 
+    measurement.radar_velocity_ro_dot(); 
 
-//  //create matrix for cross correlation Tc
-//  MatrixXd Tc = MatrixXd(3, 3);  // TODO: 3
-//
-//  //calculate cross correlation matrix
-//  Tc.fill(0.0);
-//  for(int i=0; i < 2 * n_aug + 1; i++)
-//  {
-//    VectorXd x_diff = Xsig_pred_.col(i) - x;
-//    VectorXd z_diff = Zsig.col(i) - z_pred;
-//
-//    // TODO: normalize angles z_diff(1) and x_diff(3)
-//
-//    Tc = Tc + weights(i) * x_diff * z_diff.transpose();
-//  }
-//
-//  //calculate Kalman gain K;
-//  MatrixXd K = Tc * S.inverse();
-//
-//  //residual
-//  VectorXd z_diff = z - z_pred;
-//
-//  //angle normalization
-//  while (z_diff(1) > M_PI) z_diff(1) -= 2. * M_PI;
-//  while (z_diff(1) < -M_PI) z_diff(1) += 2. * M_PI;
-//
-//  //update state mean and covariance matrix
-  // correction K * z_diff
-  //x_.ApplyCorrection(Eigen::VectorXd(5));
-//  P_ = P - K * S * K.transpose();
-  //P_.ApplyCorrection(Eigen::MatrixXd(5,5));
+  //create matrix for cross correlation Tc
+  MatrixXd Tc = MatrixXd(RadarSpaceDim, RadarSpaceDim);
+  Tc.fill(0.0);
+
+  int number_of_points = Xsig_pred_.size();
+
+  //calculate cross correlation matrix
+  for(int i=0; i < number_of_points; i++)
+  {
+    VectorXd x_diff = Xsig_pred_.col(i) - x_;
+    VectorXd z_diff = Zsig.col(i) - z_pred;
+
+    z_diff(1) = SpaceBase::normalize_angle(z_diff(1));
+    x_diff(3) = SpaceBase::normalize_angle(x_diff(3));
+
+    Tc = Tc + weights_(i) * x_diff * z_diff.transpose();
+  }
+
+  //calculate Kalman gain K;
+  MatrixXd K = Tc * S.inverse();
+
+  //residual
+  VectorXd z_diff = z - z_pred;
+
+  //angle normalization
+  z_diff(1) = SpaceBase::normalize_angle(z_diff(1));
+
+  //update state mean and covariance matrix
+  x_ = x_ + K * z_diff;
+  P_ = P_ - K * S * K.transpose();
+
+  // calculate the radar NIS.
+  NIS_radar_ = z_diff.transpose() * S.inverse() * z_diff;
 }

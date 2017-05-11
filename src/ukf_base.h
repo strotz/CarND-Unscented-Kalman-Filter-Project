@@ -1,6 +1,7 @@
 #ifndef UNSCENTEDKF_BASE_H
 #define UNSCENTEDKF_BASE_H
 
+#define EIGEN_INITIALIZE_MATRICES_BY_ZERO
 #include "Eigen/Dense"
 
 class SpaceBase
@@ -22,15 +23,14 @@ public:
 //
 // Base for all state classes
 //
+template<int Dim>
 class StateBase : public Eigen::VectorXd {
 
 protected:
 
-  StateBase(int size) :
-    size_(size),
-    Eigen::VectorXd(size)
+  StateBase() :
+    Eigen::VectorXd(Dim)
   {
-    fill(0.0);
   }
 
 public:
@@ -40,17 +40,9 @@ public:
     return *this;
   }
 
-  void set_head(int head_size, const Eigen::VectorXd& value) {
-    head(head_size) = value;
-  }
-
   int size() const {
-    return size_;
+    return Dim;
   }
-
-private:
-
-  int size_;
 };
 
 
@@ -58,14 +50,14 @@ private:
 // Base class for covariances
 //
 
+template<int Dim>
 class CovarianceBase : public Eigen::MatrixXd {
+
 protected:
 
-  CovarianceBase(int size) :
-    Eigen::MatrixXd(size, size),
-    size_(size)
+  CovarianceBase() :
+    Eigen::MatrixXd(Dim, Dim)
   {
-    fill(0.0);
   }
 
 public:
@@ -74,28 +66,21 @@ public:
     Eigen::MatrixXd::operator=(other);
     return *this;
   }
-
-  int size_;
 };
 
 //
 // Container for Sigma Points
 //
 
-template <class Ops>
+template <int Dim, class Ops>
 class SigmaPointsBase : public Eigen::MatrixXd {
 
 protected:
 
-  SigmaPointsBase(int size, int number_of_points) :
-    size_(size),
+  SigmaPointsBase(int number_of_points) :
     number_of_points_(number_of_points),
-    Eigen::MatrixXd(size, number_of_points)
+    Eigen::MatrixXd(Dim, number_of_points)
   {
-  }
-
-  SigmaPointsBase(int size) :
-    SigmaPointsBase(size, SpaceBase::dimension_to_points(size)) {
   }
 
 public:
@@ -110,12 +95,11 @@ public:
   }
 
   int size() const {
-    return size_;
+    return Dim;
   }
 
 private:
 
-  int size_;
   int number_of_points_;
 };
 

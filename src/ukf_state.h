@@ -3,6 +3,8 @@
 
 #include "ukf_base.h"
 
+const int SpaceDim = 5;
+
 //
 // Operations with 5 dimentional state
 //
@@ -16,40 +18,45 @@ public:
     return state_ref_(0);
   }
 
-  void set_pos_x(const double &value) {
+  StateOps& set_pos_x(const double &value) {
     state_ref_(0) = value;
+    return *this;
   }
 
   double pos_y() const {
     return state_ref_(1);
   }
 
-  void set_pos_y(const double &value) {
+  StateOps& set_pos_y(const double &value) {
     state_ref_(1) = value;
+    return *this;
   }
 
   double velocity() const {
     return state_ref_(2);
   }
 
-  void set_velocity(const double &value) {
+  StateOps& set_velocity(const double &value) {
     state_ref_(2) = value;
+    return *this;
   }
 
   double yaw_angle() const {
     return state_ref_(3);
   }
 
-  void set_yaw_angle(const double &value) {
+  StateOps& set_yaw_angle(const double &value) {
     state_ref_(3) = value;
+    return *this;
   }
 
   double yaw_rate() const {
     return state_ref_(4);
   }
 
-  void set_yaw_rate(const double &value) {
+  StateOps& set_yaw_rate(const double &value) {
     state_ref_(4) = value;
+    return *this;
   }
 
 protected:
@@ -60,10 +67,13 @@ protected:
 //
 // Concrete class represents 5 dimentional state
 //
-class State : public StateBase {
+class State : 
+  public StateBase<SpaceDim>{
 
 public:
-  State() : StateBase(5) { // TODO: 5
+  explicit State() : 
+    StateBase()
+  {
   }
 
   State& operator=(const Eigen::VectorXd& other) {
@@ -75,9 +85,9 @@ public:
 //
 // Concrete class that holds state covariance matrix (5)
 //
-class StateCovariance : public CovarianceBase {
+class StateCovariance : public CovarianceBase<SpaceDim> {
 public:
-  StateCovariance() : CovarianceBase(5) { // TODO: 5
+  StateCovariance() : CovarianceBase() { 
   }
 
   StateCovariance& operator=(const Eigen::MatrixXd& other) {
@@ -89,12 +99,12 @@ public:
 //
 //
 //
-class StateSigmaPoints : public SigmaPointsBase<StateOps> {
+class StateSigmaPoints : public SigmaPointsBase<SpaceDim, StateOps> {
 
 public:
 
-  StateSigmaPoints() : 
-    SigmaPointsBase(5, SpaceBase::dimension_to_points(7)) // TODO: 5, 7
+  StateSigmaPoints(int number_of_points) : 
+    SigmaPointsBase(number_of_points)
   {
   }
 

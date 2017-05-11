@@ -2,10 +2,6 @@
 #define UKF_H
 
 #include "measurement_package.h"
-#include "Eigen/Dense"
-#include <vector>
-#include <string>
-#include <fstream>
 #include "tools.h"
 
 #include "ukf_parts.h"
@@ -33,6 +29,9 @@ public:
 
   StateSigmaPoints Xsig_pred_;
 
+  Weights weights_;
+  PositionPredictor position_predictor_;
+
   ///* time when the state is true, in us
   long long time_us_;
 
@@ -56,12 +55,6 @@ public:
 
   ///* Radar measurement noise standard deviation radius change in m/s
   double std_radrd_ ;
-
-  ///* State dimension
-  int n_x_;
-
-  ///* Augmented state dimension
-  int n_aug_;
 
   ///* Sigma point spreading parameter
   double lambda_;

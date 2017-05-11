@@ -3,6 +3,8 @@
 
 #include "ukf_state.h"
 
+const int AugmentedSpaceDim = 7;
+
 //
 // Class represents operations on augmented state (7 dim)
 //
@@ -23,14 +25,14 @@ public:
 //
 // Concrete class that represents 7 dimentional (augmented) state
 //
-class AugmentedState : public StateBase {
+class AugmentedState : public StateBase<AugmentedSpaceDim> {
 
 public:
-  AugmentedState(const State &state) :
-    StateBase(7) // TODO: 7
+
+  //create augmented mean state
+  AugmentedState(const State &state) : StateBase()
   { 
-    //create augmented mean state
-    set_head(state.size(), state);
+    head(state.size()) = state;
   }
 
   AugmentedState& operator=(const Eigen::VectorXd& other) {
@@ -43,16 +45,18 @@ public:
 //
 // Concrete class that holds covariance matrix for augmented state (7)
 //
-class AugmentedStateCovariance : public CovarianceBase {
+class AugmentedStateCovariance : public CovarianceBase<AugmentedSpaceDim> {
 
 public:
 
   AugmentedStateCovariance(const StateCovariance& covariance, double std_a, double std_yawdd) :
-    CovarianceBase(7) // TODO: 7
+    CovarianceBase() 
   {
-    topLeftCorner(5, 5) = covariance;
-    (*this)(5, 5) = std_a * std_a;
-    (*this)(6, 6) = std_yawdd * std_yawdd;
+    int dim = covariance.size();
+    topLeftCorner(dim, dim) = covariance;
+
+    (*this)(dim + 1, dim + 1) = std_a * std_a;
+    (*this)(dim + 2, dim + 2) = std_yawdd * std_yawdd;
   }
 
   Eigen::MatrixXd sqrt() const {
@@ -69,14 +73,14 @@ public:
 //
 // Concrete class that holds Sigma Points within augmented space (7)
 //
-class AugmentedSpaceSigmaPoints : public SigmaPointsBase<AugmentedStateOps> {
+class AugmentedSpaceSigmaPoints : public SigmaPointsBase<AugmentedSpaceDim, AugmentedStateOps> {
 public:
   AugmentedSpaceSigmaPoints(
     const AugmentedState& state,
     const AugmentedStateCovariance& covariance,
     double lambda
-    ) : SigmaPointsBase(7) 
-  { // TODO: 7
+    ) : SigmaPointsBase(SpaceBase::dimension_to_points(AugmentedSpaceDim))
+  {
     //calculate square root of P
     Eigen::MatrixXd A = covariance.sqrt();
 
@@ -85,7 +89,7 @@ public:
 
     //set remaining sigma points
     int n_aug = size();
-    double t = std::sqrt(lambda + n_aug);  // TODO: 7  - n_x or n_aug
+    double t = std::sqrt(lambda + n_aug);
 
     for (int i = 0; i < n_aug; i++) {
       col(i + 1) = state + t * A.col(i);
