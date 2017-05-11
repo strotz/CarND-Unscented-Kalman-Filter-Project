@@ -169,11 +169,14 @@ int main(int argc, char* argv[]) {
     out_file_ << measurement.timestamp_ << "\t"; // pos1 - est
 
     // output the state vector
-    out_file_ << ukf.x_.pos_x() << "\t"; // pos1 - est
-    out_file_ << ukf.x_.pos_y() << "\t"; // pos2 - est
-    out_file_ << ukf.x_.velocity() << "\t"; // vel_abs -est
-    out_file_ << ukf.x_.yaw_angle() << "\t"; // yaw_angle -est
-    out_file_ << ukf.x_.yaw_rate() << "\t"; // yaw_rate -est
+    {
+      StateOps ops = StateOps(ukf.x_); // TODO: need nice wrap
+      out_file_ << ops.pos_x() << "\t"; // pos1 - est
+      out_file_ << ops.pos_y() << "\t"; // pos2 - est
+      out_file_ << ops.velocity() << "\t"; // vel_abs -est
+      out_file_ << ops.yaw_angle() << "\t"; // yaw_angle -est
+      out_file_ << ops.yaw_rate() << "\t"; // yaw_rate -est
+    }
 
     // output lidar and radar specific data
     if (measurement.sensor_type_ == MeasurementPackage::LASER) {
@@ -210,10 +213,11 @@ int main(int argc, char* argv[]) {
     // convert ukf x vector to cartesian to compare to ground truth
     VectorXd ukf_x_cartesian_ = VectorXd(4);
 
-    double x_estimate_ = ukf.x_.pos_x();
-    double y_estimate_ = ukf.x_.pos_y();
-    double vx_estimate_ = ukf.x_.velocity() * cos(ukf.x_.yaw_angle());
-    double vy_estimate_ = ukf.x_.velocity() * sin(ukf.x_.yaw_angle());
+    StateOps ops = StateOps(ukf.x_); // TODO: wrap it
+    double x_estimate_ = ops.pos_x();
+    double y_estimate_ = ops.pos_y();
+    double vx_estimate_ = ops.velocity() * cos(ops.yaw_angle());
+    double vy_estimate_ = ops.velocity() * sin(ops.yaw_angle());
     
     ukf_x_cartesian_ << x_estimate_, y_estimate_, vx_estimate_, vy_estimate_;
     

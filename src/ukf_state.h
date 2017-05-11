@@ -60,22 +60,15 @@ protected:
 //
 // Concrete class represents 5 dimentional state
 //
-class State : public StateBase<StateOps> {
-
-  friend class Predictor;
+class State : public StateBase {
 
 public:
-  State() :
-    StateBase(5) { // TODO: 5
+  State() : StateBase(5) { // TODO: 5
   }
 
-  State& operator=(const State& other) {
-    set_raw(other.raw());
+  State& operator=(const Eigen::VectorXd& other) {
+    StateBase::operator=(other);
     return *this;
-  }
-
-  void ApplyCorrection(const Eigen::VectorXd& correction) {
-    state_ = state_ + correction;
   }
 };
 
@@ -85,6 +78,11 @@ public:
 class StateCovariance : public CovarianceBase {
 public:
   StateCovariance() : CovarianceBase(5) { // TODO: 5
+  }
+
+  StateCovariance& operator=(const Eigen::MatrixXd& other) {
+    CovarianceBase::operator=(other);
+    return *this;
   }
 };
 
@@ -101,13 +99,13 @@ public:
   }
 
   StateSigmaPoints& operator=(const StateSigmaPoints& other) {
-    set_raw(other.raw());
+    SigmaPointsBase::operator=(other);
     return *this;
   }
 
   Eigen::VectorXd diff_from_mean(int i, const State& mean) const
   {
-    Eigen::VectorXd diff = raw_point(i) - mean.raw();
+    Eigen::VectorXd diff = col(i) - mean;
     double angle = StateOps(diff).yaw_angle();
     StateOps(diff).set_yaw_angle(SpaceBase::normalize_angle(angle));
     return  diff;

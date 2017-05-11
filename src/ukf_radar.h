@@ -6,7 +6,7 @@
 #include "ukf_parts.h"
 
 class RadarOps {
-  Eigen::VectorXd& state_;
+  Eigen::VectorXd &state_;
 
 public:
   RadarOps(Eigen::VectorXd &state_) : state_(state_) {}
@@ -36,15 +36,20 @@ public:
   }
 };
 
-class RadarState : public StateBase<RadarOps> {
+class RadarState : public StateBase {
 public:
   RadarState() :
     StateBase(3) {
   }
+
+  RadarState& operator=(const Eigen::VectorXd& other) {
+    StateBase::operator=(other);
+    return *this;
+  }
+
 };
 
-class RadarSigmaPoints : public SigmaPointsBase<RadarOps>
-{
+class RadarSigmaPoints : public SigmaPointsBase<RadarOps> {
   friend class RadarSpace;
 
 public:
@@ -52,31 +57,26 @@ public:
     SigmaPointsBase(3, SpaceBase::dimension_to_points(7)) { // TODO: 3, 7
   }
 
-  Eigen::VectorXd diff_from_mean(int i, const RadarState& mean) const
-  {
-    Eigen::VectorXd diff = raw_point(i) - mean.raw();
+  Eigen::VectorXd diff_from_mean(int i, const RadarState &mean) const {
+    Eigen::VectorXd diff = col(i) - mean;
     double angle = RadarOps(diff).phi();
     RadarOps(diff).set_phi(SpaceBase::normalize_angle(angle));
-    return  diff;
+    return diff;
   }
 };
 
-class RadarCovariance : public CovarianceBase
-{
+
+
+class RadarCovariance : public CovarianceBase {
 public:
-  explicit RadarCovariance() : 
+  RadarCovariance() :
     CovarianceBase(3) // TODO: 3
   {
   }
 
-  void AddNoise(double std_radr, double std_radphi, double std_radrd) {
-    Eigen::MatrixXd R = Eigen::MatrixXd(3, 3); // TODO: 3
-    R <<    std_radr*std_radr, 0, 0,
-    0, std_radphi*std_radphi, 0,
-    0, 0, std_radrd*std_radrd;
-
-    Eigen::MatrixXd S = data();
-    set_data(S + R);
+  RadarCovariance& operator=(const Eigen::MatrixXd& other) {
+    Eigen::MatrixXd::operator=(other);
+    return *this;
   }
 };
 
@@ -89,7 +89,7 @@ public:
   {
   }
 
-  static RadarState ConvertToRadarSpace(const StateOps& point) {
+  static RadarState ConvertToRadarSpace(const StateOps &point) {
 
     // extract values for better readibility
     double p_x = point.pos_x();
@@ -101,21 +101,22 @@ public:
     double v2 = sin(yaw) * v;
 
     // measurement model
-    RadarState result;
-    result.set_r(sqrt(p_x * p_x + p_y * p_y));  //r
-    result.set_phi(atan2(p_y, p_x));             //phi
-    result.set_r_dot((p_x * v1 + p_y * v2) / sqrt(p_x * p_x + p_y * p_y));   //r_dot
+    RadarState data;
 
-    return result;
+    RadarOps ops = RadarOps(data); // TODO: wrap it
+    ops.set_r(sqrt(p_x * p_x + p_y * p_y));  //r
+    ops.set_phi(atan2(p_y, p_x));             //phi
+    ops.set_r_dot((p_x * v1 + p_y * v2) / sqrt(p_x * p_x + p_y * p_y));   //r_dot
+
+    return data;
   }
 
-  static RadarSigmaPoints LoadPoints(const StateSigmaPoints& state_sigma_points) {
+  static RadarSigmaPoints LoadPoints(const StateSigmaPoints &state_sigma_points) {
 
     RadarSigmaPoints result;
 
     for (int i = 0; i < state_sigma_points.number_of_points(); i++) {  // iterate over sigma points
-      RadarState radar = ConvertToRadarSpace(state_sigma_points.point(i));
-      result.set_raw_point(i, radar.raw());
+      result.col(i) = ConvertToRadarSpace(state_sigma_points.point(i));
     }
     return result;
   }

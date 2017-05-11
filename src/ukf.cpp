@@ -88,12 +88,13 @@ void UKF::ProcessMeasurement(const MeasurementPackage &measurement) {
 
 void UKF::Initialize(const MeasurementPackage &measurement) {
 
+  StateOps ops = StateOps(x_);
   if (measurement.sensor_type_ == MeasurementPackage::SensorType::LASER) {
-    x_.set_pos_x(measurement.lidar_pos_x());
-    x_.set_pos_y(measurement.lidar_pos_y());
+    ops.set_pos_x(measurement.lidar_pos_x());
+    ops.set_pos_y(measurement.lidar_pos_y());
   } else if (measurement.sensor_type_ == MeasurementPackage::SensorType::RADAR) {
-    x_.set_pos_x(measurement.radar_distance_ro() * cos(measurement.radar_angle_phi()));
-    x_.set_pos_y(measurement.radar_distance_ro() * sin(measurement.radar_angle_phi()));
+    ops.set_pos_x(measurement.radar_distance_ro() * cos(measurement.radar_angle_phi()));
+    ops.set_pos_y(measurement.radar_distance_ro() * sin(measurement.radar_angle_phi()));
   } else {
     // TODO:
 
@@ -169,7 +170,12 @@ void UKF::UpdateRadar(const MeasurementPackage &measurement) {
   RadarCovariance S = radar.CalculateCovariance(Zsig, z_pred);
 
   //add measurement noise covariance matrix
-  S.AddNoise(std_radr_, std_radphi_, std_radrd_);
+  Eigen::MatrixXd R = Eigen::MatrixXd(3, 3); // TODO: 3
+  R << std_radr_ * std_radr_, 0, 0,
+    0, std_radphi_ * std_radphi_, 0,
+    0, 0, std_radrd_ * std_radrd_;
+
+  S = S + R;
 
 //  //create example vector for incoming radar measurement
 //  VectorXd z = VectorXd(n_z);
@@ -206,7 +212,7 @@ void UKF::UpdateRadar(const MeasurementPackage &measurement) {
 //
 //  //update state mean and covariance matrix
   // correction K * z_diff
-  x_.ApplyCorrection(Eigen::VectorXd(5));
+  //x_.ApplyCorrection(Eigen::VectorXd(5));
 //  P_ = P - K * S * K.transpose();
-  P_.ApplyCorrection(-Eigen::MatrixXd(5,5));
+  //P_.ApplyCorrection(Eigen::MatrixXd(5,5));
 }

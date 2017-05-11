@@ -23,14 +23,19 @@ public:
 //
 // Concrete class that represents 7 dimentional (augmented) state
 //
-class AugmentedState : public StateBase<AugmentedStateOps> {
+class AugmentedState : public StateBase {
 
 public:
   AugmentedState(const State &state) :
     StateBase(7) // TODO: 7
   { 
     //create augmented mean state
-    set_head(state.size(), state.raw());
+    set_head(state.size(), state);
+  }
+
+  AugmentedState& operator=(const Eigen::VectorXd& other) {
+    StateBase::operator=(other);
+    return *this;
   }
 };
 
@@ -45,14 +50,20 @@ public:
   AugmentedStateCovariance(const StateCovariance& covariance, double std_a, double std_yawdd) :
     CovarianceBase(7) // TODO: 7
   {
-    data_.topLeftCorner(5, 5) = covariance.data();
-    data_(5, 5) = std_a * std_a;
-    data_(6, 6) = std_yawdd * std_yawdd;
+    topLeftCorner(5, 5) = covariance;
+    (*this)(5, 5) = std_a * std_a;
+    (*this)(6, 6) = std_yawdd * std_yawdd;
   }
 
   Eigen::MatrixXd sqrt() const {
-    return data_.llt().matrixL();
+    return llt().matrixL();
   }
+
+  AugmentedStateCovariance& operator=(const Eigen::MatrixXd& other) {
+    CovarianceBase::operator=(other);
+    return *this;
+  }
+
 };
 
 //
@@ -70,15 +81,15 @@ public:
     Eigen::MatrixXd A = covariance.sqrt();
 
     //set first column of sigma point matrix
-    set_raw_point(0, state.raw());
+    col(0) = state;
 
     //set remaining sigma points
     int n_aug = size();
-    double t = sqrt(lambda + n_aug);  // TODO: 7  - n_x or n_aug
+    double t = std::sqrt(lambda + n_aug);  // TODO: 7  - n_x or n_aug
 
     for (int i = 0; i < n_aug; i++) {
-      set_raw_point(i + 1, state.raw() + t * A.col(i));
-      set_raw_point(i + 1 + n_aug, state.raw() - t * A.col(i));
+      col(i + 1) = state + t * A.col(i);
+      col(i + 1 + n_aug) = state - t * A.col(i);
     }
   }
 };

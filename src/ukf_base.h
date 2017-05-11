@@ -22,31 +22,26 @@ public:
 //
 // Base for all state classes
 //
-template<class Operations>
-class StateBase : public Operations {
+class StateBase : public Eigen::VectorXd {
 
 protected:
 
   StateBase(int size) :
     size_(size),
-    state_(size),
-    Operations(state_) {
-
-    state_.fill(0.0);
+    Eigen::VectorXd(size)
+  {
+    fill(0.0);
   }
 
-public: 
+public:
 
-  const Eigen::VectorXd& raw() const {
-    return state_;
-  }
-
-  void set_raw(const Eigen::VectorXd& value) {
-    state_ = value;
+  StateBase& operator=(const Eigen::VectorXd& other) {
+    Eigen::VectorXd::operator=(other);
+    return *this;
   }
 
   void set_head(int head_size, const Eigen::VectorXd& value) {
-    state_.head(head_size) = value;
+    head(head_size) = value;
   }
 
   int size() const {
@@ -56,10 +51,6 @@ public:
 private:
 
   int size_;
-
-protected:
-
-  Eigen::VectorXd state_;
 };
 
 
@@ -67,28 +58,24 @@ protected:
 // Base class for covariances
 //
 
-class CovarianceBase {
+class CovarianceBase : public Eigen::MatrixXd {
 protected:
 
   CovarianceBase(int size) :
-    data_(Eigen::MatrixXd(size, size)), 
+    Eigen::MatrixXd(size, size),
     size_(size)
   {
-    data_.fill(0.0);
+    fill(0.0);
   }
-
-  int size_;
-  Eigen::MatrixXd data_; // TODO: how we can hide it?
 
 public:
 
-  const Eigen::MatrixXd& data() const {
-    return data_;
+  CovarianceBase& operator=(const Eigen::MatrixXd& other) {
+    Eigen::MatrixXd::operator=(other);
+    return *this;
   }
 
-  void set_data(const Eigen::MatrixXd& data) {
-    data_ = data;
-  }
+  int size_;
 };
 
 //
@@ -96,13 +83,15 @@ public:
 //
 
 template <class Ops>
-class SigmaPointsBase {
+class SigmaPointsBase : public Eigen::MatrixXd {
+
 protected:
 
   SigmaPointsBase(int size, int number_of_points) :
     size_(size),
     number_of_points_(number_of_points),
-    sigma_points_(size, number_of_points) {
+    Eigen::MatrixXd(size, number_of_points)
+  {
   }
 
   SigmaPointsBase(int size) :
@@ -116,24 +105,8 @@ public:
   }
 
   const Ops point(int i) const {
-    Eigen::VectorXd c = sigma_points_.col(i);
+    Eigen::VectorXd c = col(i);
     return Ops(c);
-  }
-
-  const Eigen::MatrixXd& raw() const {
-    return sigma_points_;
-  }
-
-  void set_raw(const Eigen::MatrixXd& points) {
-    sigma_points_ = points;
-  }
-
-  const Eigen::VectorXd raw_point(int i) const {
-    return sigma_points_.col(i);
-  }
-
-  void set_raw_point(int i, const Eigen::VectorXd& point) {
-    sigma_points_.col(i) = point;
   }
 
   int size() const {
@@ -144,7 +117,6 @@ private:
 
   int size_;
   int number_of_points_;
-  Eigen::MatrixXd sigma_points_;
 };
 
 

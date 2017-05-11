@@ -28,7 +28,7 @@ public:
   TargetState CalculateWeightedMean(const TargetSigmaPoints& sigma_points) {
     TargetState result;
     for (int i = 0; i < number_of_points_; i++) {  //iterate over sigma points
-      result.set_raw(result.raw() + weights_(i) * sigma_points.raw_point(i));
+      result = result + weights_(i) * sigma_points.col(i);
     }
     return result;
   }
@@ -41,7 +41,7 @@ public:
     for (int i = 0; i < number_of_points_; i++) {  // iterate over sigma points
                                                    // state difference
       Eigen::VectorXd x_diff = sigma_points.diff_from_mean(i, mean);
-      result.set_data(result.data() + weights_(i) * x_diff * x_diff.transpose()); 
+      result = result + weights_(i) * x_diff * x_diff.transpose();
     }
     return result;
   }
@@ -96,13 +96,16 @@ private:
     yawd_p = yawd_p + nu_yawdd * delta_t;
 
     //write predicted sigma point into right column
-    State result;
-    result.set_pos_x(px_p);
-    result.set_pos_y(py_p);
-    result.set_velocity(v_p);
-    result.set_yaw_angle(yaw_p); // TODO: normalize
-    result.set_yaw_rate(yawd_p);
-    return result;
+    State state;
+
+    StateOps ops = StateOps(state); // TODO: wrap it
+    ops.set_pos_x(px_p);
+    ops.set_pos_y(py_p);
+    ops.set_velocity(v_p);
+    ops.set_yaw_angle(yaw_p); // TODO: normalize
+    ops.set_yaw_rate(yawd_p);
+
+    return state;
   }
 
 public:
@@ -110,8 +113,7 @@ public:
   StateSigmaPoints LoadPoints(const AugmentedSpaceSigmaPoints& Xsig_aug, double delta_t) {
     StateSigmaPoints result;
     for (int i = 0; i < Xsig_aug.number_of_points(); i++) {
-      State predicted = PredictNextState(Xsig_aug.point(i), delta_t);
-      result.set_raw_point(i, predicted.raw());
+      result.col(i) = PredictNextState(Xsig_aug.point(i), delta_t);
     }
     return result;
   }
