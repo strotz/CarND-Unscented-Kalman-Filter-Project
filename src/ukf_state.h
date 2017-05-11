@@ -9,52 +9,52 @@
 class StateOps {
 public:
   StateOps(Eigen::VectorXd &state_) :
-    state_(state_) {
+    state_ref_(state_) {
   }
 
   double pos_x() const {
-    return state_(0);
+    return state_ref_(0);
   }
 
   void set_pos_x(const double &value) {
-    state_(0) = value;
+    state_ref_(0) = value;
   }
 
   double pos_y() const {
-    return state_(1);
+    return state_ref_(1);
   }
 
   void set_pos_y(const double &value) {
-    state_(1) = value;
+    state_ref_(1) = value;
   }
 
   double velocity() const {
-    return state_(2);
+    return state_ref_(2);
   }
 
   void set_velocity(const double &value) {
-    state_(2) = value;
+    state_ref_(2) = value;
   }
 
   double yaw_angle() const {
-    return state_(3);
+    return state_ref_(3);
   }
 
   void set_yaw_angle(const double &value) {
-    state_(3) = value;
+    state_ref_(3) = value;
   }
 
   double yaw_rate() const {
-    return state_(4);
+    return state_ref_(4);
   }
 
   void set_yaw_rate(const double &value) {
-    state_(4) = value;
+    state_ref_(4) = value;
   }
 
 protected:
 
-  Eigen::VectorXd& state_;
+  Eigen::VectorXd& state_ref_;
 };
 
 //
@@ -72,6 +72,10 @@ public:
   State& operator=(const State& other) {
     set_raw(other.raw());
     return *this;
+  }
+
+  void ApplyCorrection(const Eigen::VectorXd& correction) {
+    state_ = state_ + correction;
   }
 };
 

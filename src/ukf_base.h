@@ -56,6 +56,9 @@ public:
 private:
 
   int size_;
+
+protected:
+
   Eigen::VectorXd state_;
 };
 

@@ -68,6 +68,16 @@ public:
     CovarianceBase(3) // TODO: 3
   {
   }
+
+  void AddNoise(double std_radr, double std_radphi, double std_radrd) {
+    Eigen::MatrixXd R = Eigen::MatrixXd(3, 3); // TODO: 3
+    R <<    std_radr*std_radr, 0, 0,
+    0, std_radphi*std_radphi, 0,
+    0, 0, std_radrd*std_radrd;
+
+    Eigen::MatrixXd S = data();
+    set_data(S + R);
+  }
 };
 
 

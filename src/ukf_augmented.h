@@ -12,11 +12,11 @@ public:
   AugmentedStateOps(Eigen::VectorXd &state_) : StateOps(state_) {}
 
   double nu_a() const {
-    return state_(5);
+    return state_ref_(5);
   }
 
   double nu_yawdd() const {
-    return state_(6);
+    return state_ref_(6);
   }
 };
 

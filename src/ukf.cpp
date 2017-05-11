@@ -18,8 +18,7 @@ UKF::UKF() :
   lambda_(3 - n_aug_),
   x_(), // n_x_
   P_(),
-  Xsig_()
-{
+  Xsig_pred_() {
 
   // if this is false, laser measurements will be ignored (except during init)
   use_laser_ = true;
@@ -49,15 +48,9 @@ UKF::UKF() :
   // Radar measurement noise standard deviation radius change in m/s
   std_radrd_ = 0.3;
 
-  /**
-  TODO:
+  // TODO: Hint: one or more values initialized above might be wildly off...
 
-  Complete the initialization. See ukf.h for other member properties.
-
-  Hint: one or more values initialized above might be wildly off...
-  */
-
-  // TODO: init state covariance matrix
+  // TODO: init state covariance matrix P_
 
   is_initialized_ = false;
 }
@@ -86,8 +79,7 @@ void UKF::ProcessMeasurement(const MeasurementPackage &measurement) {
     if (use_radar_) {
       UpdateRadar(measurement);
     }
-  }
-  else if (measurement.sensor_type_ == MeasurementPackage::SensorType::LASER) {
+  } else if (measurement.sensor_type_ == MeasurementPackage::SensorType::LASER) {
     if (use_laser_) {
       UpdateLidar(measurement);
     }
@@ -99,12 +91,10 @@ void UKF::Initialize(const MeasurementPackage &measurement) {
   if (measurement.sensor_type_ == MeasurementPackage::SensorType::LASER) {
     x_.set_pos_x(measurement.lidar_pos_x());
     x_.set_pos_y(measurement.lidar_pos_y());
-  }
-  else if (measurement.sensor_type_ == MeasurementPackage::SensorType::RADAR) {
+  } else if (measurement.sensor_type_ == MeasurementPackage::SensorType::RADAR) {
     x_.set_pos_x(measurement.radar_distance_ro() * cos(measurement.radar_angle_phi()));
     x_.set_pos_y(measurement.radar_distance_ro() * sin(measurement.radar_angle_phi()));
-  }
-  else {
+  } else {
     // TODO:
 
   }
@@ -129,13 +119,13 @@ void UKF::Prediction(double delta_t) {
   //predict sigma points
   Predictor predictor = Predictor(lambda_);
 
-  Xsig_ = predictor.LoadPoints(Xsig_aug, delta_t);
+  Xsig_pred_ = predictor.LoadPoints(Xsig_aug, delta_t);
 
   //predicted state mean
-  x_ = predictor.CalculateWeightedMean(Xsig_);
+  x_ = predictor.CalculateWeightedMean(Xsig_pred_);
 
   //predicted state covariance matrix
-  P_ = predictor.CalculateCovariance(Xsig_, x_);
+  P_ = predictor.CalculateCovariance(Xsig_pred_, x_);
 }
 
 /**
@@ -170,7 +160,7 @@ void UKF::UpdateRadar(const MeasurementPackage &measurement) {
   RadarSpace radar(lambda_);
 
   //create matrix for sigma points in measurement space
-  RadarSigmaPoints Zsig = radar.LoadPoints(Xsig_);
+  RadarSigmaPoints Zsig = radar.LoadPoints(Xsig_pred_);
 
   //mean predicted measurement
   RadarState z_pred = radar.CalculateWeightedMean(Zsig);
@@ -178,12 +168,45 @@ void UKF::UpdateRadar(const MeasurementPackage &measurement) {
   //measurement covariance matrix S
   RadarCovariance S = radar.CalculateCovariance(Zsig, z_pred);
 
-    //  //add measurement noise covariance matrix
-    //  MatrixXd R = MatrixXd(n_z,n_z);
-    //  R <<    std_radr*std_radr, 0, 0,
-    //    0, std_radphi*std_radphi, 0,
-    //    0, 0,std_radrd*std_radrd;
-    //  S = S + R;
+  //add measurement noise covariance matrix
+  S.AddNoise(std_radr_, std_radphi_, std_radrd_);
 
+//  //create example vector for incoming radar measurement
+//  VectorXd z = VectorXd(n_z);
+//  z <<
+//    5.9214,
+//    0.2187,
+//    2.0062;
+//
 
+//  //create matrix for cross correlation Tc
+//  MatrixXd Tc = MatrixXd(3, 3);  // TODO: 3
+//
+//  //calculate cross correlation matrix
+//  Tc.fill(0.0);
+//  for(int i=0; i < 2 * n_aug + 1; i++)
+//  {
+//    VectorXd x_diff = Xsig_pred_.col(i) - x;
+//    VectorXd z_diff = Zsig.col(i) - z_pred;
+//
+//    // TODO: normalize angles z_diff(1) and x_diff(3)
+//
+//    Tc = Tc + weights(i) * x_diff * z_diff.transpose();
+//  }
+//
+//  //calculate Kalman gain K;
+//  MatrixXd K = Tc * S.inverse();
+//
+//  //residual
+//  VectorXd z_diff = z - z_pred;
+//
+//  //angle normalization
+//  while (z_diff(1) > M_PI) z_diff(1) -= 2. * M_PI;
+//  while (z_diff(1) < -M_PI) z_diff(1) += 2. * M_PI;
+//
+//  //update state mean and covariance matrix
+  // correction K * z_diff
+  x_.ApplyCorrection(Eigen::VectorXd(5));
+//  P_ = P - K * S * K.transpose();
+  P_.ApplyCorrection(-Eigen::MatrixXd(5,5));
 }
