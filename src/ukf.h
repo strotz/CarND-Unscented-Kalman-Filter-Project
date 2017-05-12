@@ -27,9 +27,12 @@ public:
   ///* state covariance matrix
   StateCovariance P_;
 
+  int number_of_points_;
+
   StateSigmaPoints Xsig_pred_;
 
   Weights weights_;
+
   PositionPredictor position_predictor_;
 
   ///* time when the state is true, in us

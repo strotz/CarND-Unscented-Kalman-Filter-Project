@@ -10,11 +10,14 @@ class Weights : public Eigen::VectorXd
 
 public:
 
-  Weights(double lambda, int space_dimension) :
-    number_of_points_(SpaceBase::dimension_to_points(space_dimension)),
-    Eigen::VectorXd(SpaceBase::dimension_to_points(space_dimension))
+  Weights(int number_of_points) :
+    number_of_points_(number_of_points),
+    Eigen::VectorXd(number_of_points)
   {
-    double d = lambda + space_dimension; 
+  }
+
+  void Initialize(double lambda, int space_dimension) {
+    double d = lambda + space_dimension;
     fill(0.5 / d);
     (*this)(0) = lambda / d;
   }

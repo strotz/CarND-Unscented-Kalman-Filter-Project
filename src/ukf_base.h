@@ -12,11 +12,9 @@ public:
     return dimension * 2 + 1;
   }
 
-  //angle normalization
+  // angle normalization
   static double normalize_angle(double angle) {
-    while (angle > M_PI) angle -= 2. * M_PI;
-    while (angle < -M_PI) angle += 2. * M_PI;
-    return angle;
+    return fmod(angle + M_PI, 2. * M_PI) - M_PI;
   }
 };
 
@@ -31,6 +29,7 @@ protected:
   StateBase() :
     Eigen::VectorXd(Dim)
   {
+    fill(0.0);
   }
 
 public:
@@ -40,7 +39,7 @@ public:
     return *this;
   }
 
-  int size() const {
+  int dim() const {
     return Dim;
   }
 };
@@ -58,6 +57,7 @@ protected:
   CovarianceBase() :
     Eigen::MatrixXd(Dim, Dim)
   {
+    fill(0.0);
   }
 
 public:
@@ -65,6 +65,10 @@ public:
   CovarianceBase& operator=(const Eigen::MatrixXd& other) {
     Eigen::MatrixXd::operator=(other);
     return *this;
+  }
+
+  int dim() const {
+    return Dim;
   }
 };
 
@@ -81,6 +85,7 @@ protected:
     number_of_points_(number_of_points),
     Eigen::MatrixXd(Dim, number_of_points)
   {
+    fill(0.0);
   }
 
 public:
@@ -89,12 +94,7 @@ public:
     return number_of_points_;
   }
 
-  const Ops point(int i) const {
-    Eigen::VectorXd c = col(i);
-    return Ops(c);
-  }
-
-  int size() const {
+  int dim() const {
     return Dim;
   }
 

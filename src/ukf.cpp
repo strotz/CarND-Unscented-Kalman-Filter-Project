@@ -16,8 +16,9 @@ UKF::UKF() :
   lambda_(3 - AugmentedSpaceDim),
   x_(),
   P_(),
+  number_of_points_(SpaceBase::dimension_to_points(AugmentedSpaceDim)),
   Xsig_pred_(SpaceBase::dimension_to_points(AugmentedSpaceDim)),
-  weights_(lambda_, AugmentedSpaceDim),
+  weights_(SpaceBase::dimension_to_points(AugmentedSpaceDim)),
   position_predictor_(weights_)
 {
 
@@ -26,7 +27,6 @@ UKF::UKF() :
 
   // if this is false, radar measurements will be ignored (except during init)
   use_radar_ = true;
-
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
   std_a_ = 5; // TODO: tuning parameter
@@ -48,6 +48,8 @@ UKF::UKF() :
 
   // Radar measurement noise standard deviation radius change in m/s
   std_radrd_ = 0.3;
+
+  weights_.Initialize(lambda_, AugmentedSpaceDim);
 
   // init state covariance matrix P_
   P_ << 1, 0, 0, 0, 0,
@@ -177,13 +179,11 @@ void UKF::UpdateRadar(const MeasurementPackage &measurement) {
     measurement.radar_velocity_ro_dot(); 
 
   //create matrix for cross correlation Tc
-  MatrixXd Tc = MatrixXd(RadarSpaceDim, RadarSpaceDim);
+  MatrixXd Tc = MatrixXd(SpaceDim, RadarSpaceDim);
   Tc.fill(0.0);
 
-  int number_of_points = Xsig_pred_.size();
-
   //calculate cross correlation matrix
-  for(int i=0; i < number_of_points; i++)
+  for(int i=0; i < number_of_points_; i++)
   {
     VectorXd x_diff = Xsig_pred_.col(i) - x_;
     VectorXd z_diff = Zsig.col(i) - z_pred;

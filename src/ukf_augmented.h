@@ -32,7 +32,7 @@ public:
   //create augmented mean state
   AugmentedState(const State &state) : StateBase()
   { 
-    head(state.size()) = state;
+    head(state.dim()) = state;
   }
 
   AugmentedState& operator=(const Eigen::VectorXd& other) {
@@ -52,11 +52,11 @@ public:
   AugmentedStateCovariance(const StateCovariance& covariance, double std_a, double std_yawdd) :
     CovarianceBase() 
   {
-    int dim = covariance.size();
+    int dim = covariance.dim();
     topLeftCorner(dim, dim) = covariance;
 
-    (*this)(dim + 1, dim + 1) = std_a * std_a;
-    (*this)(dim + 2, dim + 2) = std_yawdd * std_yawdd;
+    (*this)(dim, dim) = std_a * std_a;
+    (*this)(dim + 1, dim + 1) = std_yawdd * std_yawdd;
   }
 
   Eigen::MatrixXd sqrt() const {
@@ -88,7 +88,7 @@ public:
     col(0) = state;
 
     //set remaining sigma points
-    int n_aug = size();
+    int n_aug = dim();
     double t = std::sqrt(lambda + n_aug);
 
     for (int i = 0; i < n_aug; i++) {
