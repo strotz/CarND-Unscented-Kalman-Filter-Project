@@ -131,7 +131,9 @@ public:
     int number_of_points = Xsig_aug.number_of_points();
     StateSigmaPoints result(number_of_points);
     for (int i = 0; i < number_of_points; i++) {
-      result.col(i) = PredictNextState(Xsig_aug.point(i), delta_t);
+      Eigen::VectorXd t = Xsig_aug.col(i);
+      AugmentedStateOps ops(t);
+      result.col(i) = PredictNextState(t, delta_t);
     }
     return result;
   }

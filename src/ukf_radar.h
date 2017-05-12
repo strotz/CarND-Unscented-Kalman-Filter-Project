@@ -114,7 +114,9 @@ public:
     int number_of_points = state_sigma_points.number_of_points();
     RadarSigmaPoints result(number_of_points);
     for (int i = 0; i < number_of_points; i++) {  // iterate over sigma points
-      result.col(i) = ConvertToRadarSpace(state_sigma_points.point(i));
+      Eigen::VectorXd t = state_sigma_points.col(i);
+      StateOps ops(t);
+      result.col(i) = ConvertToRadarSpace(ops);
     }
     return result;
   }
