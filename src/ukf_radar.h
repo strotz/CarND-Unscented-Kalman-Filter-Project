@@ -65,7 +65,7 @@ public:
   }
 };
 
-class RadarSigmaPoints : public SigmaPointsBase<RadarSpaceDim, RadarOps> {
+class RadarSigmaPoints : public SigmaPointsBase<RadarSpaceDim> {
   friend class RadarSpace;
 
 public:
@@ -82,13 +82,7 @@ public:
 };
 
 class RadarSpace : public SpaceTransformation<RadarSigmaPoints, RadarState, RadarCovariance> {
-
 public:
-  explicit RadarSpace() :
-    SpaceTransformation()
-  {
-  }
-
   static RadarState ConvertToRadarSpace(const StateOps &point) {
 
     // extract values for better readibility

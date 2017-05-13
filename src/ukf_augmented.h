@@ -73,7 +73,7 @@ public:
 //
 // Concrete class that holds Sigma Points within augmented space (7)
 //
-class AugmentedSpaceSigmaPoints : public SigmaPointsBase<AugmentedSpaceDim, AugmentedStateOps> {
+class AugmentedSpaceSigmaPoints : public SigmaPointsBase<AugmentedSpaceDim> {
 public:
   AugmentedSpaceSigmaPoints(const Eigen::MatrixXd& other) :
     SigmaPointsBase(SpaceBase::dimension_to_points(AugmentedSpaceDim)) {

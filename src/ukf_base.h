@@ -76,7 +76,7 @@ public:
 // Container for Sigma Points
 //
 
-template <int Dim, class Ops>
+template <int Dim>
 class SigmaPointsBase : public Eigen::MatrixXd {
 
 protected:
@@ -102,6 +102,54 @@ private:
 
   int number_of_points_;
 };
+
+class Weights : public Eigen::VectorXd
+{
+  int number_of_points_;
+
+public:
+
+  Weights(int number_of_points) :
+    number_of_points_(number_of_points),
+    Eigen::VectorXd(number_of_points)
+  {
+  }
+
+  void Initialize(double lambda, int space_dimension) {
+    double d = lambda + space_dimension;
+    fill(0.5 / d);
+    (*this)(0) = lambda / d;
+  }
+
+  int number_of_points() const
+  {
+    return number_of_points_;
+  }
+};
+
+
+template<class TargetSigmaPoints, class TargetState, class TargetStateCovariance>
+class SpaceTransformation
+{
+public:
+
+  TargetStateCovariance CalculateCovariance(
+    const Weights& weights,
+    const TargetSigmaPoints& sigma_points,
+    const TargetState& mean)
+  {
+    TargetStateCovariance result;
+    result.fill(0.0);
+    int len = weights.number_of_points();
+    for (int i = 0; i < len; i++) {  // iterate over sigma points
+      // state difference
+      Eigen::VectorXd x_diff = sigma_points.diff_from_mean(i, mean);
+      result = result + weights(i) * x_diff * x_diff.transpose();
+    }
+    return result;
+  }
+};
+
 
 
 #endif // UNSCENTEDKF_BASE_H

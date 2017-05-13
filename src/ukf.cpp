@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include "ukf_radar.h"
+#include "ukf_laser.h"
 
 using namespace std;
 using Eigen::MatrixXd;
@@ -22,7 +23,7 @@ UKF::UKF() :
   position_predictor_() {
 
   // if this is false, laser measurements will be ignored (except during init)
-  use_laser_ = false;
+  use_laser_ = true;
 
   // if this is false, radar measurements will be ignored (except during init)
   use_radar_ = true;
@@ -137,14 +138,55 @@ void UKF::Prediction(double delta_t) {
  * @param {MeasurementPackage} meas_package
  */
 void UKF::UpdateLidar(const MeasurementPackage &measurement) {
-  /**
-  TODO: implement lidar
+  LidarSpace lidar;
 
-  Complete this function! Use lidar data to update the belief about the object's
-  position. Modify the state vector, x_, and covariance, P_.
+  //create matrix for sigma points in measurement space
+  LidarSigmaPoints Zsig = lidar.LoadPoints(Xsig_pred_);
 
-  You'll also need to calculate the lidar NIS.
-  */
+  //mean predicted measurement
+  LidarState z_pred(Zsig * weights_);
+
+  //measurement covariance matrix S
+  LidarCovariance S = lidar.CalculateCovariance(weights_, Zsig, z_pred);
+
+  // TODO:
+  //add measurement noise covariance matrix
+  MatrixXd R = MatrixXd(LidarSpaceDim, LidarSpaceDim);
+  R << std_laspx_ * std_laspx_, 0,
+    0, std_laspy_ * std_laspy_;
+
+  S = S + R;
+
+  //create example vector for incoming radar measurement
+  VectorXd z = VectorXd(LidarSpaceDim);
+  z <<
+    measurement.lidar_pos_x(),
+    measurement.lidar_pos_y();
+
+  //create matrix for cross correlation Tc
+  MatrixXd Tc = MatrixXd(SpaceDim, LidarSpaceDim);
+  Tc.fill(0.0);
+
+  //calculate cross correlation matrix
+  for (int i = 0; i < number_of_points_; i++) {
+    VectorXd x_diff = Xsig_pred_.col(i) - x_;
+    VectorXd z_diff = Zsig.col(i) - z_pred;
+
+    Tc = Tc + weights_(i) * x_diff * z_diff.transpose();
+  }
+
+  //calculate Kalman gain K;
+  MatrixXd K = Tc * S.inverse();
+
+  //residual
+  VectorXd z_diff = z - z_pred;
+
+  //update state mean and covariance matrix
+  x_ = x_ + K * z_diff;
+  P_ = P_ - K * S * K.transpose();
+
+  // calculate the radar NIS.
+  NIS_laser_ = z_diff.transpose() * S.inverse() * z_diff;
 }
 
 /**

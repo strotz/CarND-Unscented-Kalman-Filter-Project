@@ -99,7 +99,7 @@ public:
 //
 //
 //
-class StateSigmaPoints : public SigmaPointsBase<SpaceDim, StateOps> {
+class StateSigmaPoints : public SigmaPointsBase<SpaceDim> {
 
 public:
 
