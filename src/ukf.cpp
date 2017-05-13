@@ -19,7 +19,7 @@ UKF::UKF() :
   number_of_points_(SpaceBase::dimension_to_points(AugmentedSpaceDim)),
   Xsig_pred_(SpaceBase::dimension_to_points(AugmentedSpaceDim)),
   weights_(SpaceBase::dimension_to_points(AugmentedSpaceDim)),
-  position_predictor_(weights_)
+  position_predictor_()
 {
 
   // if this is false, laser measurements will be ignored (except during init)
@@ -52,7 +52,8 @@ UKF::UKF() :
   weights_.Initialize(lambda_, AugmentedSpaceDim);
 
   // init state covariance matrix P_
-  P_ << 1, 0, 0, 0, 0,
+  P_ <<
+    1, 0, 0, 0, 0,
     0, 1, 0, 0, 0,
     0, 0, 1000, 0, 0,
     0, 0, 0, 1000, 0,
@@ -126,10 +127,10 @@ void UKF::Prediction(double delta_t) {
   Xsig_pred_ = position_predictor_.LoadPoints(Xsig_aug, delta_t);
 
   //predicted state mean
-  x_ = position_predictor_.CalculateWeightedMean(Xsig_pred_);
+  x_ = position_predictor_.CalculateWeightedMean(weights_,  Xsig_pred_);
 
   //predicted state covariance matrix
-  P_ = position_predictor_.CalculateCovariance(Xsig_pred_, x_);
+  P_ = position_predictor_.CalculateCovariance(weights_, Xsig_pred_, x_);
 }
 
 /**
@@ -152,16 +153,16 @@ void UKF::UpdateLidar(const MeasurementPackage &measurement) {
  * @param {MeasurementPackage} meas_package
  */
 void UKF::UpdateRadar(const MeasurementPackage &measurement) {
-  RadarSpace radar(weights_);
+  RadarSpace radar;
 
   //create matrix for sigma points in measurement space
   RadarSigmaPoints Zsig = radar.LoadPoints(Xsig_pred_);
 
   //mean predicted measurement
-  RadarState z_pred = radar.CalculateWeightedMean(Zsig);
+  RadarState z_pred = radar.CalculateWeightedMean(weights_, Zsig);
 
   //measurement covariance matrix S
-  RadarCovariance S = radar.CalculateCovariance(Zsig, z_pred);
+  RadarCovariance S = radar.CalculateCovariance(weights_, Zsig, z_pred);
 
   //add measurement noise covariance matrix
   MatrixXd R = MatrixXd(RadarSpaceDim, RadarSpaceDim);

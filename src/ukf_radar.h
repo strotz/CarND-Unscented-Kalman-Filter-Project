@@ -84,8 +84,8 @@ public:
 class RadarSpace : public SpaceTransformation<RadarSigmaPoints, RadarState, RadarCovariance> {
 
 public:
-  RadarSpace(const Weights& weights) :
-    SpaceTransformation(weights)
+  explicit RadarSpace() :
+    SpaceTransformation()
   {
   }
 

@@ -32,36 +32,28 @@ public:
 template<class TargetSigmaPoints, class TargetState, class TargetStateCovariance>
 class SpaceTransformation
 {
-protected:
-
-  Weights weights_;
-
-  SpaceTransformation(const Weights& weights) :
-    weights_(weights)
-  {
-  }
-
 public:
 
-  TargetState CalculateWeightedMean(const TargetSigmaPoints& sigma_points) {
+  TargetState CalculateWeightedMean(const Weights& weights, const TargetSigmaPoints& sigma_points) {
     TargetState result;
-    int len = weights_.number_of_points();
+    int len = weights.number_of_points();
     for (int i = 0; i < len; i++) { //iterate over sigma points
-      result = result + weights_(i) * sigma_points.col(i);
+      result = result + weights(i) * sigma_points.col(i);
     }
     return result;
   }
 
   TargetStateCovariance CalculateCovariance(
+    const Weights& weights,
     const TargetSigmaPoints& sigma_points,
     const TargetState& mean) 
   {
     TargetStateCovariance result;
-    int len = weights_.number_of_points();
+    int len = weights.number_of_points();
     for (int i = 0; i < len; i++) {  // iterate over sigma points
       // state difference
       Eigen::VectorXd x_diff = sigma_points.diff_from_mean(i, mean);
-      result = result + weights_(i) * x_diff * x_diff.transpose();
+      result = result + weights(i) * x_diff * x_diff.transpose();
     }
     return result;
   }
@@ -72,8 +64,8 @@ class PositionPredictor : public SpaceTransformation<StateSigmaPoints, State, St
 
 public:
 
-  PositionPredictor(const Weights& weights) :
-    SpaceTransformation(weights)
+  explicit PositionPredictor() :
+    SpaceTransformation()
   {
   }
 
