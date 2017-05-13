@@ -47,9 +47,9 @@ public:
     StateBase() {
   }
 
-  RadarState& operator=(const Eigen::VectorXd& other) {
+  RadarState(const Eigen::VectorXd& other) :
+    StateBase() {
     StateBase::operator=(other);
-    return *this;
   }
 };
 

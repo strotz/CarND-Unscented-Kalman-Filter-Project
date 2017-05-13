@@ -19,8 +19,7 @@ UKF::UKF() :
   number_of_points_(SpaceBase::dimension_to_points(AugmentedSpaceDim)),
   Xsig_pred_(SpaceBase::dimension_to_points(AugmentedSpaceDim)),
   weights_(SpaceBase::dimension_to_points(AugmentedSpaceDim)),
-  position_predictor_()
-{
+  position_predictor_() {
 
   // if this is false, laser measurements will be ignored (except during init)
   use_laser_ = false;
@@ -29,10 +28,10 @@ UKF::UKF() :
   use_radar_ = true;
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 5; // TODO: tuning parameter
+  std_a_ = 0.4; // TODO: tuning parameter
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 1; // TODO: tuning parameter
+  std_yawdd_ = 0.3; // TODO: tuning parameter
 
   // Laser measurement noise standard deviation position1 in m
   std_laspx_ = 0.15;
@@ -52,12 +51,10 @@ UKF::UKF() :
   weights_.Initialize(lambda_, AugmentedSpaceDim);
 
   // init state covariance matrix P_
-  P_ <<
-    1, 0, 0, 0, 0,
-    0, 1, 0, 0, 0,
-    0, 0, 1000, 0, 0,
-    0, 0, 0, 1000, 0,
-    0, 0, 0, 0, 1000;
+  P_.setIdentity();
+
+  NIS_radar_ = 0;
+  NIS_laser_ = 0;
 
   is_initialized_ = false;
 }
@@ -71,9 +68,15 @@ UKF::~UKF() {}
 void UKF::ProcessMeasurement(const MeasurementPackage &measurement) {
   if (!is_initialized_) {
     Initialize(measurement);
-
     is_initialized_ = true;
     return; // skip predict/update
+  }
+
+  if (!use_laser_ && measurement.sensor_type_ == MeasurementPackage::SensorType::LASER) {
+    return; // skip, do not predict
+  }
+  if (!use_radar_ && measurement.sensor_type_ == MeasurementPackage::SensorType::RADAR) {
+    return; // skip, do not predict
   }
 
   //compute the time elapsed between the current and previous measurements
@@ -83,13 +86,9 @@ void UKF::ProcessMeasurement(const MeasurementPackage &measurement) {
   Prediction(dt);
 
   if (measurement.sensor_type_ == MeasurementPackage::SensorType::RADAR) {
-    if (use_radar_) {
-      UpdateRadar(measurement);
-    }
+    UpdateRadar(measurement);
   } else if (measurement.sensor_type_ == MeasurementPackage::SensorType::LASER) {
-    if (use_laser_) {
-      UpdateLidar(measurement);
-    }
+    UpdateLidar(measurement);
   }
 }
 
@@ -127,7 +126,7 @@ void UKF::Prediction(double delta_t) {
   Xsig_pred_ = position_predictor_.LoadPoints(Xsig_aug, delta_t);
 
   //predicted state mean
-  x_ = position_predictor_.CalculateWeightedMean(weights_,  Xsig_pred_);
+  x_ = Xsig_pred_ * weights_;
 
   //predicted state covariance matrix
   P_ = position_predictor_.CalculateCovariance(weights_, Xsig_pred_, x_);
@@ -159,7 +158,7 @@ void UKF::UpdateRadar(const MeasurementPackage &measurement) {
   RadarSigmaPoints Zsig = radar.LoadPoints(Xsig_pred_);
 
   //mean predicted measurement
-  RadarState z_pred = radar.CalculateWeightedMean(weights_, Zsig);
+  RadarState z_pred(Zsig * weights_);
 
   //measurement covariance matrix S
   RadarCovariance S = radar.CalculateCovariance(weights_, Zsig, z_pred);
@@ -174,18 +173,17 @@ void UKF::UpdateRadar(const MeasurementPackage &measurement) {
 
   //create example vector for incoming radar measurement
   VectorXd z = VectorXd(RadarSpaceDim);
-  z << 
-    measurement.radar_distance_ro(), 
-    measurement.radar_angle_phi(), 
-    measurement.radar_velocity_ro_dot(); 
+  z <<
+    measurement.radar_distance_ro(),
+    measurement.radar_angle_phi(),
+    measurement.radar_velocity_ro_dot();
 
   //create matrix for cross correlation Tc
   MatrixXd Tc = MatrixXd(SpaceDim, RadarSpaceDim);
   Tc.fill(0.0);
 
   //calculate cross correlation matrix
-  for(int i=0; i < number_of_points_; i++)
-  {
+  for (int i = 0; i < number_of_points_; i++) {
     VectorXd x_diff = Xsig_pred_.col(i) - x_;
     VectorXd z_diff = Zsig.col(i) - z_pred;
 

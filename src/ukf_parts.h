@@ -34,21 +34,13 @@ class SpaceTransformation
 {
 public:
 
-  TargetState CalculateWeightedMean(const Weights& weights, const TargetSigmaPoints& sigma_points) {
-    TargetState result;
-    int len = weights.number_of_points();
-    for (int i = 0; i < len; i++) { //iterate over sigma points
-      result = result + weights(i) * sigma_points.col(i);
-    }
-    return result;
-  }
-
   TargetStateCovariance CalculateCovariance(
     const Weights& weights,
     const TargetSigmaPoints& sigma_points,
     const TargetState& mean) 
   {
     TargetStateCovariance result;
+    result.fill(0.0);
     int len = weights.number_of_points();
     for (int i = 0; i < len; i++) {  // iterate over sigma points
       // state difference
@@ -110,11 +102,13 @@ private:
     //write predicted sigma point into right column
     State state;
 
+    yaw_p = SpaceBase::normalize_angle(yaw_p);
+
     StateOps(state)
       .set_pos_x(px_p)
       .set_pos_y(py_p)
       .set_velocity(v_p)
-      .set_yaw_angle(yaw_p) // TODO: normalize ?
+      .set_yaw_angle(yaw_p)
       .set_yaw_rate(yawd_p);
 
     return state;

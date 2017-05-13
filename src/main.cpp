@@ -219,7 +219,7 @@ int main(int argc, char* argv[]) {
     double vy_estimate_ = ops.velocity() * sin(ops.yaw_angle());
     
     ukf_x_cartesian_ << x_estimate_, y_estimate_, vx_estimate_, vy_estimate_;
-    
+
     estimations.push_back(ukf_x_cartesian_);
     ground_truth.push_back(gt_pack_list[k].gt_values_);
 
@@ -227,7 +227,8 @@ int main(int argc, char* argv[]) {
 
   // compute the accuracy (RMSE)
   Tools tools;
-  cout << "RMSE" << endl << tools.CalculateRMSE(estimations, ground_truth) << endl;
+  VectorXd rmse = tools.CalculateRMSE(estimations, ground_truth);
+  cout << "RMSE" << endl << rmse << endl;
 
   // close files
   if (out_file_.is_open()) {
