@@ -4,9 +4,7 @@ cmake_minimum_required (VERSION 3.5)
 
 add_definitions(-std=c++0x)
 
-set(sources
-   src/ukf.cpp
-   src/main.cpp
-   src/tools.cpp)
+enable_testing()
 
-add_executable(UnscentedKF ${sources})
+add_subdirectory(src)
+add_subdirectory(test)

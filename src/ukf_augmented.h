@@ -75,6 +75,12 @@ public:
 //
 class AugmentedSpaceSigmaPoints : public SigmaPointsBase<AugmentedSpaceDim, AugmentedStateOps> {
 public:
+  AugmentedSpaceSigmaPoints(const Eigen::MatrixXd& other) :
+    SigmaPointsBase(SpaceBase::dimension_to_points(AugmentedSpaceDim)) {
+
+    Eigen::MatrixXd::operator=(other);
+  }
+
   AugmentedSpaceSigmaPoints(
     const AugmentedState& state,
     const AugmentedStateCovariance& covariance,
