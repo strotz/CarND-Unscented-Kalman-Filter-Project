@@ -32,7 +32,7 @@ UKF::UKF() :
   std_a_ = 0.33;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 2.02;
+  std_yawdd_ = 0.4;
 
   // Laser measurement noise standard deviation position1 in m
   std_laspx_ = 0.15;
@@ -153,7 +153,6 @@ void UKF::UpdateLidar(const MeasurementPackage &measurement) {
   //measurement covariance matrix S
   LidarCovariance S = lidar.CalculateCovariance(weights_, Zsig, z_pred);
 
-  // TODO:
   //add measurement noise covariance matrix
   MatrixXd R = MatrixXd(LidarSpaceDim, LidarSpaceDim);
   R << std_laspx_ * std_laspx_, 0,
@@ -173,8 +172,8 @@ void UKF::UpdateLidar(const MeasurementPackage &measurement) {
 
   //calculate cross correlation matrix
   for (int i = 0; i < number_of_points_; i++) {
-    VectorXd x_diff = Xsig_pred_.col(i) - x_;
-    VectorXd z_diff = Zsig.col(i) - z_pred;
+    VectorXd x_diff = Xsig_pred_.diff_from_mean(i, x_);
+    VectorXd z_diff = Zsig.diff_from_mean(i, z_pred);
 
     Tc = Tc + weights_(i) * x_diff * z_diff.transpose();
   }
@@ -230,12 +229,8 @@ void UKF::UpdateRadar(const MeasurementPackage &measurement) {
 
   //calculate cross correlation matrix
   for (int i = 0; i < number_of_points_; i++) {
-    VectorXd x_diff = Xsig_pred_.col(i) - x_;
-    VectorXd z_diff = Zsig.col(i) - z_pred;
-
-    z_diff(1) = SpaceBase::normalize_angle(z_diff(1));
-    x_diff(3) = SpaceBase::normalize_angle(x_diff(3));
-
+    VectorXd x_diff = Xsig_pred_.diff_from_mean(i, x_);
+    VectorXd z_diff = Zsig.diff_from_mean(i, z_pred);
     Tc = Tc + weights_(i) * x_diff * z_diff.transpose();
   }
 

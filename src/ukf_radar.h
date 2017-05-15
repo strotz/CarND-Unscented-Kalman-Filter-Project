@@ -94,12 +94,20 @@ public:
     double v1 = cos(yaw) * v;
     double v2 = sin(yaw) * v;
 
+    double distance = sqrt(p_x * p_x + p_y * p_y);
+
     // measurement model
     RadarState data;
-    RadarOps(data)
-      .set_r(sqrt(p_x * p_x + p_y * p_y))  //r
-      .set_phi(atan2(p_y, p_x))            //phi
-      .set_r_dot((p_x * v1 + p_y * v2) / sqrt(p_x * p_x + p_y * p_y));   //r_dot
+    RadarOps ops(data);
+    ops.set_r(distance);  //r
+
+    if (p_x < 0.001 || p_y < 0.001) {
+      ops.set_phi(atan2(p_y, p_x)); //phi TODO:
+    }
+
+    if (distance > 0.001) {
+      ops.set_r_dot((p_x * v1 + p_y * v2) / distance);   //r_dot
+    }
 
     return data;
   }
