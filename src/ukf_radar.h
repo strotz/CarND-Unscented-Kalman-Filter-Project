@@ -39,6 +39,15 @@ public:
     state_ref_(2) = value;
     return *this;
   }
+
+  static VectorXd difference(const VectorXd &one, const VectorXd &two)
+  {
+    VectorXd diff = one - two;
+    double angle = RadarOps(diff).phi();
+    // andle normalization
+    RadarOps(diff).set_phi(SpaceBase::normalize_angle(angle));
+    return diff;
+  }
 };
 
 class RadarState : public StateBase<RadarSpaceDim> {
@@ -73,11 +82,8 @@ public:
     SigmaPointsBase(number_of_points) {
   }
 
-  Eigen::VectorXd diff_from_mean(int i, const RadarState &mean) const {
-    Eigen::VectorXd diff = col(i) - mean;
-    double angle = RadarOps(diff).phi();
-    RadarOps(diff).set_phi(SpaceBase::normalize_angle(angle));
-    return diff;
+  VectorXd diff_from_mean(int i, const RadarState &mean) const {
+    return RadarOps::difference(col(i), mean);
   }
 };
 
@@ -100,12 +106,9 @@ public:
     RadarState data;
     RadarOps ops(data);
     ops.set_r(distance);  //r
+    ops.set_phi(atan2(p_y, p_x)); //phi 
 
-    if (p_x < 0.001 || p_y < 0.001) {
-      ops.set_phi(atan2(p_y, p_x)); //phi TODO:
-    }
-
-    if (distance > 0.001) {
+    if (distance > 0.0001) {
       ops.set_r_dot((p_x * v1 + p_y * v2) / distance);   //r_dot
     }
 

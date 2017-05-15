@@ -3,6 +3,8 @@
 
 #include "Eigen/Dense"
 
+using Eigen::MatrixXd;
+
 class SpaceBase
 {
 public:

@@ -3,6 +3,7 @@
 #include <vector>
 #include <iostream>
 #include "Eigen/Dense"
+#include <ctime>
 
 class Tools {
 public:

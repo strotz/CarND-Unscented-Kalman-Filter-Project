@@ -238,15 +238,13 @@ void UKF::UpdateRadar(const MeasurementPackage &measurement) {
   MatrixXd K = Tc * S.inverse();
 
   //residual
-  VectorXd z_diff = z - z_pred;
-
-  //angle normalization
-  z_diff(1) = SpaceBase::normalize_angle(z_diff(1));
+  VectorXd z_diff = RadarOps::difference(z, z_pred);
 
   //update state mean and covariance matrix
   x_ = x_ + K * z_diff;
   P_ = P_ - K * S * K.transpose();
 
-  // calculate the radar NIS.
-  NIS_radar_ = z_diff.transpose() * S.inverse() * z_diff;
+  // calculate the radar NIS using updated x_
+  VectorXd z_diff_1 = RadarOps::difference(z, RadarSpace::ConvertToRadarSpace(x_));
+  NIS_radar_ = z_diff_1.transpose() * S.inverse() * z_diff_1;
 }
