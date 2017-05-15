@@ -54,9 +54,6 @@ private:
 
     //write predicted sigma point into right column
     State state;
-
-    yaw_p = SpaceBase::normalize_angle(yaw_p);
-
     StateOps(state)
       .set_pos_x(px_p)
       .set_pos_y(py_p)

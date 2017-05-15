@@ -1,7 +1,6 @@
 #ifndef UNSCENTEDKF_BASE_H
 #define UNSCENTEDKF_BASE_H
 
-#define EIGEN_INITIALIZE_MATRICES_BY_ZERO
 #include "Eigen/Dense"
 
 class SpaceBase

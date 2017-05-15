@@ -29,10 +29,10 @@ UKF::UKF() :
   use_radar_ = true;
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 0.4; // TODO: tuning parameter
+  std_a_ = 0.33;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 0.3; // TODO: tuning parameter
+  std_yawdd_ = 2.02;
 
   // Laser measurement noise standard deviation position1 in m
   std_laspx_ = 0.15;
@@ -52,7 +52,11 @@ UKF::UKF() :
   weights_.Initialize(lambda_, AugmentedSpaceDim);
 
   // init state covariance matrix P_
-  P_.setIdentity();
+  P_ << 1,0,0,0,0,
+    0.0,1,0,0,0,
+    0.0,0,1,0,0,
+    0.0,0,0,1,0,
+    0.0,0,0,0,1;
 
   NIS_radar_ = 0;
   NIS_laser_ = 0;
